@@ -1,0 +1,32 @@
+<?xml version='1.0'?>
+<sdf version="1.6">
+ <model name="quadcopter_attitude_control">
+	 
+	<enable_wind>true</enable_wind>
+	<!-- Place the aircraft 1m above the ground 
+		 x y z r p y -->
+	<pose>0 0 1 0 0 0</pose> 
+	<link name="pivot"></link>
+
+	<!-- Fix the pivot base to the world -->
+	<joint name="base_joint" type="fixed">
+		<parent>world</parent>
+		<child>pivot</child>
+		<pose>0 0 0 0 0 0</pose>
+	</joint>
+
+	<include>
+		<uri>model://quadcopter</uri>
+	</include>
+		
+
+	<!-- Note:
+	 This joins the base and the body of the aircraft to the 
+	aircrafts body CoM, not the aircrafts CoM which includes the props. -->
+	<joint name="ball_joint" type="ball">
+		<parent>pivot</parent>
+		<child>quadcopter::quadcopter_model::base_link</child>
+	</joint>
+
+  </model>
+</sdf>

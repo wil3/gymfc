@@ -1,0 +1,9 @@
+*.egg-info/
+*.pyc
+**/.gazebo/*
+**/.sdformat/*
+**/.config/*
+Makefile
+*.cmake
+CMakeCache.txt
+**/CMakeFiles/*
