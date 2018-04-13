@@ -326,7 +326,7 @@ class GazeboEnv(gym.Env):
     def reset(self):
         self.loop.run_until_complete(self._reset())
         self.loop.run_until_complete(self._step_sim(self.action_space.low))
-        self.target = self.sample_target().copy()
+        self.omega_target = self.sample_target().copy()
         return self.state()
 
     def close(self):
