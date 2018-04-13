@@ -20,14 +20,14 @@ episodic_damage_kwargs = {
     "memory_size": 1,
     "world": "attitude-iris-motor-damage.world", 
     "omega_bounds": [-math.pi*2,math.pi*2],
-    "max_sim_time": 4.,
+    "max_sim_time": 6.,
     "motor_count":4,
     }
-id = 'QuadcopterFCEpisodicDamage-v0'.format(i)
+id = 'QuadcopterFCEpisodicDamage-v0'
 register(
     id=id,
     entry_point='gymfc.envs:AttitudeControlEnv',
-    kwargs=episodic_kwargs)
+    kwargs=episodic_damage_kwargs)
 
 
 episodic_kwargs = {

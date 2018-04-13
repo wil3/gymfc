@@ -46,8 +46,8 @@
       <connectionTimeoutMaxCount>5</connectionTimeoutMaxCount>
 	  <loopRate>1000.0</loopRate>
 	  <motor>
-		  <health>1 1 1 0.5</health> <!-- Percent health of each motor, 1=no damage, 0=not working at all -->
-		  <delay>2</delay> <!-- Simulation time in which health should be applied -->
+		  <health>1 1 1 0.3</health> <!-- Percent health of each motor, 1=no damage, 0=not working at all -->
+		  <delay>2.0</delay> <!-- Simulation time in which health should be applied -->
 	  </motor>
       <rotor id="0">
         <vel_p_gain>0.01</vel_p_gain>
