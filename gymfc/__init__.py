@@ -10,7 +10,7 @@ continuous_kwargs = {
      "command_time_on":[0.1, 1.0],
      "max_sim_time": 60,
      }
-id = 'QuadcopterFCContinuous-v0'.format(i)
+id = 'QuadcopterFCContinuous-v0'
 register(
     id=id,
     entry_point='gymfc.envs:AttitudeContinuousControlEnv',
@@ -24,7 +24,7 @@ episodic_kwargs = {
     "max_sim_time": 1.,
     "motor_count":4,
     }
-id = 'QuadcopterFCEpisodic{}-v0'.format(i)
+id = 'QuadcopterFCEpisodic-v0'
 register(
     id=id,
     entry_point='gymfc.envs:AttitudeControlEnv',
