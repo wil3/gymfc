@@ -5,10 +5,17 @@ designed for
 developing intelligent flight control systems using reinforcement learning. This
 environment is meant to serve as a tool for researchers to benchmark their
 controllers to progress the state-of-the art of intelligent flight control.
-Our tech report is available at []()  providing details of the
+Our tech report is available at [https://arxiv.org/abs/1804.04154](https://arxiv.org/abs/1804.04154)  providing details of the
 environment and  benchmarking of PPO, TRPO and DDPG using [OpenAI Baselines](https://github.com/openai/baselines). We compare the performance results to a PID controller and find PPO to out perform PID in regards to rise time and overall error. Please use the following BibTex entry to cite our
 work,
-
+```
+@misc{1804.04154,
+Author = {William Koch and Renato Mancuso and Richard West and Azer Bestavros},
+Title = {Reinforcement Learning for UAV Attitude Control},
+Year = {2018},
+Eprint = {arXiv:1804.04154},
+}
+```
 
 # Installation 
 
