@@ -143,6 +143,8 @@ struct fdmPacket
 	private: ignition::math::Vector2d pitchLimit;
 	private: ignition::math::Vector2d yawLimit;
 
+	private: ignition::math::Vector4d motorHealth = ignition::math::Vector4d(1, 1, 1, 1);
+	private: double motorHealthDelay = 0.0;
 
 	public: physics::WorldPtr _world;
 	

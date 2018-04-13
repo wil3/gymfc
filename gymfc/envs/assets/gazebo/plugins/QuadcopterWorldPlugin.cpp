@@ -313,6 +313,15 @@ void QuadcopterWorldPlugin::processSDF(sdf::ElementPtr _sdf)
 			}
 		}
   } 
+
+  //Optional ability to have the health of the motor deteriate after a certain time.
+  if (_sdf->HasElement("motor"))
+  {
+	sdf::ElementPtr motorSDF = _sdf->GetElement("motor");
+	this->motorHealth = motorSDF->Get<ignition::math::Vector4d>("health");
+	this->motorHealthDelay = motorSDF->Get<double>("delay");
+
+  }
 }
 
 void QuadcopterWorldPlugin::softReset(){
@@ -481,7 +490,10 @@ void QuadcopterWorldPlugin::ApplyMotorForces(const double _dt)
       this->rotors[i].rotorVelocitySlowdownSim;
     double vel = this->rotors[i].joint->GetVelocity(0);
     double error = vel - velTarget;
-    double force = this->rotors[i].pid.Update(error, _dt);
+	double force = this->rotors[i].pid.Update(error, _dt);
+	if (this->_world->SimTime() >= this->motorHealthDelay){
+		force *= this->motorHealth[i];
+	} 
     this->rotors[i].joint->SetForce(0, force);
   }
 }
