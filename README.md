@@ -19,13 +19,27 @@ Eprint = {arXiv:1804.04154},
 
 # Installation 
 
-1. Download and install [Gazebo 8](http://gazebosim.org/download).
+1. Download and install [Gazebo 8](http://gazebosim.org/download) (Gazebo 9 soon
+   PR welcome).
 2. From root directory of this project, `sudo pip3 install -e .`
+3. Confirm environment is operating successfully by running an evaluation for
+   included PID controller tuned for the Iris quadcopter,
+```
+python3 -m gymfc.controllers.iris_pid_eval --env-id=AttFC_GyroErr-MotorVel_M4_Ep-v0
+```
+If your environment is installed successfully you should observe a plot that
+closely resembles this step response,
+![PID Step Response]()
 
 
 # Environments
 
-## QuadcopterFCEpisodic-v0
+Different environments are available depending on the capabilities of the flight
+control system. For example new ESCs contain sensors to provide telemetry
+including the velocity of the rotor which can be used as additional state in the
+environment.
+
+## AttFC_GyroErr-MotorVel_M4_Ep-v0
 
 This environment is an episodic task to learn attitude control of a quadcopter. At the beginning of each episode the
 quadcopter is at rest. A random angular velocity is sampled and the agent must achieve this target  within
@@ -42,8 +56,17 @@ to the target calculated by -clip(sum(|Ω\* − Ω |)/3Ω\_max)  where the clip
 function bounds the result to [-1, 0] and  Ω\_max is the initially error from
 when the target angular velocity is set.
 
-## QuadcopterFCContinuous-v0
+Note: In the referenced paper different memory sizes were tested, however for PPO it was
+found additional memory did not help. At the moment for research, debugging and testing purposes environments with different memory sizes are included and can be referenced by AttFC_GyroErr1-MotorVel_M4_Ep-v0 - AttFC_GyroErr10-MotorVel_M4_Ep-v0.
+
+## AttFC_GyroErr-MotorVel_M4_Con-v0
 
 This environment is essentially the same as the episodic variant however it runs
 for 60 seconds and continually changes the target angular velocities randomly
 between [0.1, 1] seconds.
+
+## AttFC_GyroErr1_M4_Ep-v0 - AttFC_GyroErr10_M4_Ep-v0
+
+This environment supports ESCs without telemetry and only relies on the gyro
+readings as environment observations. Preliminary testing has shown memory > 1
+increases accuracy. 
