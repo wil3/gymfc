@@ -23,13 +23,16 @@ Eprint = {arXiv:1804.04154},
    PR welcome).
 2. From root directory of this project, `sudo pip3 install -e .`
 3. Confirm environment is operating successfully by running an evaluation for
-   included PID controller tuned for the Iris quadcopter,
+   the
+   included PID controller tuned for the Iris quadcopter used in the environment
+and referenced paper,
 ```
 python3 -m gymfc.controllers.iris_pid_eval --env-id=AttFC_GyroErr-MotorVel_M4_Ep-v0
 ```
 If your environment is installed successfully you should observe a plot that
 closely resembles this step response,
-![PID Step Response]()
+![PID Step
+Response](https://raw.githubusercontent.com/wil3/gymfc/master/images/pid-step-AttFC_GyroErr-MotorVel_M4_Ep-v0.png)
 
 
 # Environments
