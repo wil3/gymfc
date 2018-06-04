@@ -10,7 +10,7 @@ continuous_kwargs = {
      "command_time_on":[0.1, 1.0],
      "max_sim_time": 60,
      }
-id = 'AttFC_Err-MotorVel_M4_Con-v0'
+id = 'AttFC_GyroErr-MotorVel_M4_Con-v0'
 register(
     id=id,
     entry_point='gymfc.envs:GyroErrorESCVelocityFeedbackContinuousEnv',
@@ -38,7 +38,7 @@ episodic_kwargs = {
     "max_sim_time": 1.,
     "motor_count":4,
     }
-id = 'AttFC_Err-MotorVel_M4_Ep-v0'
+id = 'AttFC_GyroErr-MotorVel_M4_Ep-v0'
 register(
     id=id,
     entry_point='gymfc.envs:GyroErrorESCVelocityFeedbackEnv',
