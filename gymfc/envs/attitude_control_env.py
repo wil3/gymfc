@@ -106,7 +106,7 @@ class GyroErrorESCVelocityFeedbackContinuousEnv(GyroErrorESCVelocityFeedbackEnv)
 
     def step(self, action):
         """ Sample a random angular velocity """
-        ret = super(AttitudeContinuousControlEnv, self).step(action) 
+        ret = super(GyroErrorESCVelocityFeedbackContinuousEnv, self).step(action) 
 
         # Update the target angular velocity 
         if not self.command_off_time:
