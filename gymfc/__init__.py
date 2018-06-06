@@ -25,7 +25,7 @@ for i in range(1,MAX_MEMORY):
         "max_sim_time": 1.,
         "motor_count":4,
         }
-    id = 'AttFC_GyroErr{}-MotorVel{}_M4_Ep-v0'.format(i)
+    id = 'AttFC_GyroErr{}-MotorVel{}_M4_Ep-v0'.format(i, i)
     register(
         id=id,
         entry_point='gymfc.envs:GyroErrorESCVelocityFeedbackEnv',
@@ -57,7 +57,7 @@ for i in range(1,MAX_MEMORY):
          "command_time_on":[0.1, 1.0],
          "max_sim_time": 60,
          }
-    id = 'AttFC_GyroErr{}-MotorVel{}_M4_Con-v0'.format(i)
+    id = 'AttFC_GyroErr{}-MotorVel{}_M4_Con-v0'.format(i, i)
     register(
         id=id,
         entry_point='gymfc.envs:GyroErrorESCVelocityFeedbackContinuousEnv',
