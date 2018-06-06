@@ -16,7 +16,7 @@ class AttitudeFlightControlEnv(GazeboEnv):
     
 class GyroErrorFeedbackEnv(AttitudeFlightControlEnv):
     def __init__(self, world="attitude-iris.world", 
-                 omega_bounds = math.pi, 
+                 omega_bounds = [-math.pi, math.pi], 
                  max_sim_time = 1., 
                  motor_count = 4, 
                  memory_size=1,): 
@@ -54,7 +54,7 @@ class GyroErrorFeedbackEnv(AttitudeFlightControlEnv):
 
 class GyroErrorESCVelocityFeedbackEnv(GazeboEnv):
     def __init__(self, world="attitude-iris.world", 
-                 omega_bounds = math.pi, 
+                 omega_bounds =[-math.pi, math.pi], 
                  max_sim_time = 1., 
                  motor_count = 4, 
                  memory_size=1,): 
