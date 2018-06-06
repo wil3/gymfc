@@ -40,7 +40,9 @@ Response](https://raw.githubusercontent.com/wil3/gymfc/master/images/pid-step-At
 Different environments are available depending on the capabilities of the flight
 control system. For example new ESCs contain sensors to provide telemetry
 including the velocity of the rotor which can be used as additional state in the
-environment.
+environment. Environment naming format is [prefix]\_[inputs]\_M[actuator
+count]\_[task type] where prefix=AttFC, Ep is episodic tasks, and Con is
+continuous tasks.
 
 ## AttFC_GyroErr-MotorVel_M4_Ep-v0
 
