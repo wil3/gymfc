@@ -5,5 +5,7 @@ setup(name='gymfc',
       description='Environment for developing intelligent flight control systems',
       author='William Koch',
       author_email='wfkoch [at] bu [dot] edu',
-      install_requires=['gym', 'numpy', 'pygazebo', 'psutil']  
+      url='https://github.com/wil3/gymfc',
+      license='MIT',
+      install_requires=['gym', 'numpy', 'psutil']  
 )
