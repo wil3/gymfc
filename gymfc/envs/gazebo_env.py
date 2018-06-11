@@ -13,9 +13,9 @@ import signal
 import sys
 import xml.etree.ElementTree as ET
 import psutil
-import pygazebo
-from .msg.world_control_pb2 import WorldControl
-from .msg.world_stats_pb2 import WorldStatistics
+from ..pygazebo import pygazebo
+from ..pygazebo.msg.world_control_pb2 import WorldControl
+from ..pygazebo.msg.world_stats_pb2 import WorldStatistics
 logger = logging.getLogger("gymfc")
 
 class PWMPacket:
