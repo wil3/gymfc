@@ -124,7 +124,7 @@ class GazeboEnv(gym.Env):
         self.gz_port = self._get_open_port(self.GZ_START_PORT)
         self.aircraft_port = self._get_open_port(self.FC_PORT)
         self.world = world
-        self.pid = None
+        self.pids = []
         self.loop = asyncio.get_event_loop()
         
         # Init the seed variable
@@ -234,7 +234,7 @@ class GazeboEnv(gym.Env):
         target_world = os.path.join(gz_assets, "worlds", self.world)
         
         p = subprocess.Popen(["gzserver", "--verbose", target_world], shell=False) 
-        self.pid = p.pid
+        self.pids.append(p.pid)
 
         # Connect to the Protobuff API
         self.loop.run_until_complete(self._connect())
@@ -272,10 +272,9 @@ class GazeboEnv(gym.Env):
 
     def kill(self):
         """ Kill the gazebo processes based on the original PID  """
-        if self.pid:
-            p = subprocess.run("kill {}".format(self.pid), shell=True)
-            print("Gazebo shutdown success")
-
+        for pid in self.pids:
+            p = subprocess.run("kill {}".format(pid), shell=True)
+            print("Kill process ", pid)
 
     def shutdown(self):
         self.kill()
@@ -346,7 +345,8 @@ class GazeboEnv(gym.Env):
         raise NotImplementedError
 
     def render(self, mode='human'):
-        pass
+        p = subprocess.Popen(["gzclient"], shell=False)
+        self.pids.append(p.pid)
 
 
 class SDFNoMaxStepSizeFoundException(Exception):

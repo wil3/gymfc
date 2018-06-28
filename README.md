@@ -35,6 +35,18 @@ closely resembles this step response,
 Response](https://raw.githubusercontent.com/wil3/gymfc/master/images/pid-step-AttFC_GyroErr-MotorVel_M4_Ep-v0.png)
 
 
+# Development 
+
+It is recommended to run GymFC in headless mode (i.e. using `gzserver`) however
+during development and testing it may be desired to visually see the aircraft.  
+You can do this by using the `render` OpenAI gym API call which will also start
+`gzclient` along side `gzserver`. For example when creating the environment use,
+```
+env = gym.make(env_id)
+env.render()
+```
+
+
 # Environments
 
 Different environments are available depending on the capabilities of the flight
