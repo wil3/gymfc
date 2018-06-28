@@ -45,7 +45,7 @@ You can do this by using the `render` OpenAI gym API call which will also start
 env = gym.make(env_id)
 env.render()
 ```
-
+[![GymFC Visualization Demo](https://raw.githubusercontent.com/wil3/gymfc/master/images/gymfc-vis.png)](https://youtu.be/sX9NwmDg6SA)
 
 # Environments
 
