@@ -38,9 +38,7 @@ Response](https://raw.githubusercontent.com/wil3/gymfc/master/images/pid-step-At
 # Development 
 
 It is recommended to run GymFC in headless mode (i.e. using `gzserver`) however
-during development and testing it may be desired to visually see the aircraft.  
-You can do this by using the `render` OpenAI gym API call which will also start
-`gzclient` along side `gzserver`. For example when creating the environment use,
+during development and testing it may be desired to visually see the aircraft.  You can do this by using the `render` OpenAI gym API call which will also start `gzclient` along side `gzserver`. For example when creating the environment use,
 ```
 env = gym.make(env_id)
 env.render()
