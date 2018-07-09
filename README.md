@@ -18,9 +18,11 @@ Eprint = {arXiv:1804.04154},
 ```
 
 # Installation 
-
-1. Download and install [Gazebo 8](http://gazebosim.org/download) (Gazebo 9 soon
-   PR welcome).
+Note, Ubuntu is the only OS currently supported primarily because controllers must be
+trained in headless mode on a server. I welcome any PRs and feedback for getting
+it installed on other OSs.   
+1. Download and install [Gazebo 8](http://gazebosim.org/download) (PRs welcome
+   for Gazebo 9).
 2. From root directory of this project, `sudo pip3 install -e .`
 3. Confirm environment is operating successfully by running an evaluation for
    the
