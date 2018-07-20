@@ -709,7 +709,8 @@ Rotor::Rotor()
     this->frequencyCutoff = this->kDefaultFrequencyCutoff;
     this->samplingRate = this->kDefaultSamplingRate;
 	*/
-
+	
+	// P, I, D, Imin, Imax, cmdMax, cmdMin
     this->pid.Init(0.1, 0, 0, 0, 0, 1.0, -1.0);
 }
 
