@@ -170,6 +170,8 @@ struct fdmPacket
 	/// \brief Pointer to an IMU sensor
 	public: sensors::ImuSensorPtr imuSensor;
 
+	/// \brief True if world should be reset
+	public: bool resetWorld;
 	/// \brief false before ardupilot controller is online
 	/// to allow gazebo to continue without waiting
 	public: bool arduCopterOnline;
