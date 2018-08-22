@@ -13,9 +13,6 @@ import signal
 import sys
 import xml.etree.ElementTree as ET
 import psutil
-from ..pygazebo import pygazebo
-from ..pygazebo.msg.world_control_pb2 import WorldControl
-from ..pygazebo.msg.world_stats_pb2 import WorldStatistics
 logger = logging.getLogger("gymfc")
 
 class PWMPacket:
@@ -130,12 +127,6 @@ class GazeboEnv(gym.Env):
         # Init the seed variable
         self.seed()
 
-	# Setup reset message 
-        self.reset_message = WorldControl()
-        self.reset_message.reset.time_only = True
-        # Keep the current world stats here
-        self.world_stats = None
-
         # Set up the action/obs spaces
         state = self.state()
         high = np.array([1.0] * motor_count)
@@ -179,10 +170,6 @@ class GazeboEnv(gym.Env):
         self.sim_time = observations.timestamp 
         return observations
     
-    def reset2(self):
-        # FIXME When the leak is fixed in gz use this
-        cp = subprocess.run("gz world -t", shell=True)
-
     def _signal_handler(self, signal, frame):
         print("Ctrl+C detected, shutting down gazebo and application")
         self.shutdown()
@@ -236,9 +223,6 @@ class GazeboEnv(gym.Env):
         p = subprocess.Popen(["gzserver", "--verbose", target_world], shell=False) 
         self.pids.append(p.pid)
 
-        # Connect to the Protobuff API
-        self.loop.run_until_complete(self._connect())
-        logger.debug("Connected to Gazebo")
 
     def sdf_max_step_size(self):
         """ Return the max step size """
@@ -280,50 +264,7 @@ class GazeboEnv(gym.Env):
         self.kill()
         sys.exit(0)
 
-    async def _connect(self):
-        """ Connect to Gazebo Protobuff API """
-        for i in range(self.MAX_CONNECT_TRIES):
-            try:
-                self.manager = await pygazebo.connect((self.host, self.gz_port)) 
-                break
-            except Exception as e:
-                print("Exception occured connecting to Gazebo retrying ....", e)
-                await asyncio.sleep(5)
-
-        if not self.manager:
-            self.shutdown()
-        # Initialize a world control publisher
-        self.pub_world_control = await self.manager.advertise('/gazebo/default/world_control',
-                                'gazebo.msgs.WorldControl')
-
-        # Note this topic publishes at T=0.2 or 5Hz so its only used to check 
-        # for resets. 
-        world_stats_subscriber = self.manager.subscribe('/gazebo/default/world_stats', 
-                    'gazebo.msgs.WorldStatistics', self._world_stats_callback)
-
-        # Wait until we get the first one
-        while not self.world_stats:
-            await world_stats_subscriber.wait_for_connection()
-            await asyncio.sleep(0.1)
-
-    async def _reset(self):
-        """  Reset the simulator time using Google Protobuff API """
-
-        #There is a bug using the gz utility that does not close 
-        #connections affecting multiple Gz versions
-        #https://bitbucket.org/osrf/gazebo/issues/2397/gzserver-doesnt-close-disconnected-sockets
-        await self.pub_world_control.publish(self.reset_message)
-        while True:
-            if self.world_stats.iterations == 0:
-                break
-            await asyncio.sleep(0.01)
-
-    def _world_stats_callback(self, data):
-        self.world_stats = WorldStatistics()
-        self.world_stats.ParseFromString(data)
-
     def reset(self):
-        self.loop.run_until_complete(self._reset())
         self.loop.run_until_complete(self._step_sim(self.action_space.low))
         self.omega_target = self.sample_target().copy()
         return self.state()
