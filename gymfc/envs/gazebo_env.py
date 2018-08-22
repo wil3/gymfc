@@ -75,28 +75,32 @@ class ESCClientProtocol:
         """ Initialize the electronic speed controller client """
         self.obs = None
         self.packet_received = False
+        self.exception = None
 
     def connection_made(self, transport):
         self.transport = transport
 
-    async def write_motor(self, motor_values):
+    async def write_motor(self, motor_values, reset=False):
         """ Write the motor values to the ESC and then return 
-        the current sensor values.
+        the current sensor values and an exception if anything bad happend.
         
         Args:
             motor_values (np.array): motor values in range [0, 1000]
+            reset (bool): Reset the simulation world
         """
         self.packet_received = False
         self.transport.sendto(PWMPacket(motor_values).encode())
 
+        # Pass the exception back if anything bad happens
         while not self.packet_received:
+            if self.exception:
+                return (None, self.exception)
             await asyncio.sleep(0.001)
 
-        return self.obs
+        return (self.obs, None)
 
     def error_received(self, exc):
-        # FIXME add better error handling
-        logger.error(exc)
+        self.exception = exc
 
     def datagram_received(self, data, addr):
         """ Receive a UDP datagram
@@ -105,6 +109,8 @@ class ESCClientProtocol:
             data (bytes): raw bytes of packet payload 
             addr (string): address of the sender
         """
+        # Everything is OK, reset
+        self.exception = None
         self.packet_received = True
         self.obs = FDMPacket().decode(data)
     
@@ -158,7 +164,7 @@ class GazeboEnv(gym.Env):
 
         return self.loop.run_until_complete(self._step_sim(action))
 
-    async def _step_sim(self, action):
+    async def _step_sim(self, action, reset=False):
         """Complete a single simulation step, return a tuple containing
         the simulation time and the state
 
@@ -169,7 +175,7 @@ class GazeboEnv(gym.Env):
         # Convert to motor input to PWM range [0, 1000] to match
         # Betaflight mixer output
         pwm_motor_values = [ ((m + 1) * 500) for m in action]
-        observations = await self.esc_protocol.write_motor(pwm_motor_values)
+        observations, e = await self.esc_protocol.write_motor(pwm_motor_values, reset=reset)
         # Make these visible
         self.omega_actual = observations.angular_velocity_rpy
         self.sim_time = observations.timestamp 
