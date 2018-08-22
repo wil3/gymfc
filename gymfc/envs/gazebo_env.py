@@ -134,6 +134,10 @@ class GazeboEnv(gym.Env):
         self.world = world
         self.pids = []
         self.loop = asyncio.get_event_loop()
+
+        #TODO Read this from XML incase user wants to change this in the world
+        self.stepsize = 0.001
+        self.last_sim_time = -self.stepsize
         
         # Init the seed variable
         self.seed()
@@ -175,10 +179,21 @@ class GazeboEnv(gym.Env):
         # Convert to motor input to PWM range [0, 1000] to match
         # Betaflight mixer output
         pwm_motor_values = [ ((m + 1) * 500) for m in action]
-        observations, e = await self.esc_protocol.write_motor(pwm_motor_values, reset=reset)
+        # Try and send command
+        observations = None
+        for i in range(self.MAX_CONNECT_TRIES):
+            observations, e = await self.esc_protocol.write_motor(pwm_motor_values, reset=reset)
+            if observations:
+                break
+            if i == self.MAX_CONNECT_TRIES -1:
+                raise SystemExit("Timeout, could not connect to Gazebo")
+            await asyncio.sleep(1)
+
         # Make these visible
         self.omega_actual = observations.angular_velocity_rpy
         self.sim_time = observations.timestamp 
+        assert np.isclose(self.sim_time, (self.last_sim_time + self.stepsize), 1e-6), "New time {} is not the expected time {}".format(self.sim_time, self.last_sim_time + self.stepsize)
+        self.last_sim_time = self.sim_time 
         return observations
     
     def _signal_handler(self, signal, frame):
