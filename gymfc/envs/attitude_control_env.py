@@ -51,6 +51,9 @@ class GyroErrorFeedbackEnv(AttitudeFlightControlEnv):
                       ( (3 * self.memory_size) - memory.size, 0), 
                       'constant', constant_values=(0)) 
 
+    def reset(self):
+        self.observation_history = []
+        return super(GyroErrorFeedbackEnv, self).reset()
 
 class GyroErrorESCVelocityFeedbackEnv(GazeboEnv):
     def __init__(self, world="attitude-iris.world", 
@@ -96,6 +99,9 @@ class GyroErrorESCVelocityFeedbackEnv(GazeboEnv):
                       (( (3+self.motor_count) * self.memory_size) - memory.size, 0), 
                       'constant', constant_values=(0)) 
 
+    def reset(self):
+        self.observation_history = []
+        return super(GyroErrorESCVelocityFeedbackEnv, self).reset()
 
 class GyroErrorESCVelocityFeedbackContinuousEnv(GyroErrorESCVelocityFeedbackEnv):
     def __init__(self, command_time_off=[], command_time_on=[], **kwargs):
