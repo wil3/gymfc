@@ -296,6 +296,7 @@ void QuadcopterWorldPlugin::processSDF(sdf::ElementPtr _sdf)
     this->loopRate, 100);
 
   // Optional parameters to start the aircraft off in a spin
+  this->resetWithRandomAngularVelocity = FALSE;
   if (_sdf->HasElement("resetState"))
   {
 		sdf::ElementPtr resetStateSDF = _sdf->GetElement("resetState");
@@ -342,7 +343,7 @@ void QuadcopterWorldPlugin::loop_thread()
 			{
 				// Cant do a full reset of the RNG gets reset as well
 				this->softReset();
-				double error = 0.02;// About 1 deg/s
+				double error = 0.0001;// About 0.006 deg/s
 				double spR = 0.0;
 				double spP = 0.0;
 				double spY = 0.0;
