@@ -33,11 +33,11 @@ namespace gazebo
 /// \brief A servo packet.
 struct ServoPacket
 {
-  /// \brief Motor speed data.
-  float motorSpeed[MAX_MOTORS];
+	/// \brief Flag to indicate the world should be reset
+	int resetWorld;
+	/// \brief Motor speed data.
+	float motorSpeed[MAX_MOTORS];
 
-  /// \brief packet sequence to keep in sync
-//  unsigned int seq;
 };
 
 /// \brief Flight Dynamics Model packet that is sent back to the Quadcopter
