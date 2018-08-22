@@ -16,13 +16,15 @@ import psutil
 logger = logging.getLogger("gymfc")
 
 class PWMPacket:
-    def __init__(self, pwm_values):
+    def __init__(self, pwm_values, reset=False):
         """ Iniitalize a PWM motor packet 
 
         Args:
-            pwm (np.array): an array of PWM values in the range [0, 1000] 
+            pwm_values (np.array): an array of PWM values in the range [0, 1000] 
+            reset: True if the simulation should be reset
         """
         self.pwm_values = pwm_values
+        self.reset = int(reset)
 
     def encode(self, motor_map = [1, 2, 3, 0]):
         """  Create and return a PWM packet 
@@ -38,7 +40,10 @@ class PWMPacket:
         motor_velocities = [self.pwm_values[motor_map[i]] / scale \
                             for i in range(len(self.pwm_values))]
 
-        return struct.pack("<{}f".format(len(motor_velocities)), *motor_velocities)
+        # Put the integer first, because of the struct alignment in the 
+        # Gazebo plugin. Send this as an int incase we later want to have 
+        # this represent other modes we want to control in the simulator
+        return struct.pack("<i{}f".format(len(motor_velocities)), self.reset, *motor_velocities)
 
     def __str__(self):
         return str(self.pwm)
