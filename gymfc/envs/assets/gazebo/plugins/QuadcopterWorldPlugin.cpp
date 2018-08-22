@@ -324,7 +324,7 @@ void QuadcopterWorldPlugin::softReset(){
 void QuadcopterWorldPlugin::loop_thread()
 {
 	double msPeriod = 1000.0/this->loopRate;
-
+    this->resetWorld = FALSE;
 	while (1){
 
 		std::lock_guard<std::mutex> lock(this->mutex);
@@ -338,9 +338,7 @@ void QuadcopterWorldPlugin::loop_thread()
 		bool received = this->ReceiveMotorCommand();
 
 		if (received){
-			// Theres is an issue even after a reset 
-			// the IMU isnt reset and sending old values
-			if (this->_world->Iterations() == 0)
+			if (this->resetWorld)
 			{
 				// Cant do a full reset of the RNG gets reset as well
 				this->softReset();
@@ -373,7 +371,7 @@ void QuadcopterWorldPlugin::loop_thread()
 			this->ApplyMotorForces((curTime - this->lastControllerUpdateTime).Double());
 		}
 		this->lastControllerUpdateTime = curTime;
-		if (received)
+		if (received && !this->resetWorld)
 		{
 			this->_world->Step(1);
 		}
@@ -437,7 +435,6 @@ bool QuadcopterWorldPlugin::Bind(const char *_address, const uint16_t _port)
 	//socklen_t addrlen = sizeof(this->remaddr);
 	this->remaddrlen = sizeof(this->remaddr);
 	int recvlen;
-	char buf[] = "hi";
 
     FD_ZERO(&fds);
     FD_SET(this->handle, &fds);
@@ -514,7 +511,7 @@ bool QuadcopterWorldPlugin::ReceiveMotorCommand()
   }
   ssize_t recvSize = this->Recv(&pkt, sizeof(ServoPacket), waitMs);
   ssize_t expectedPktSize =
-    sizeof(pkt.motorSpeed[0])*this->rotors.size();//  + sizeof(pkt.seq);
+    sizeof(pkt.motorSpeed[0])*this->rotors.size()  + sizeof(pkt.resetWorld);
   if ((recvSize == -1) || (recvSize < expectedPktSize))
   {
     // didn't receive a packet
@@ -570,6 +567,11 @@ bool QuadcopterWorldPlugin::ReceiveMotorCommand()
       }
 	  commandProcessed = TRUE;
     }
+      if (pkt.resetWorld == 1) {
+          this->resetWorld = TRUE;
+      } else {
+          this->resetWorld = FALSE;
+      }
   }
   return commandProcessed;
 }
