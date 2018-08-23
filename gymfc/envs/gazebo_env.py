@@ -184,7 +184,10 @@ class GazeboEnv(gym.Env):
         for i in range(self.MAX_CONNECT_TRIES):
             observations, e = await self.esc_protocol.write_motor(pwm_motor_values, reset=reset)
             if observations:
-                break
+                if observations.iteration == 1:
+                    break
+                else:
+                    print ("Previous command was not processed, resending")
             if i == self.MAX_CONNECT_TRIES -1:
                 raise SystemExit("Timeout, could not connect to Gazebo")
             await asyncio.sleep(1)

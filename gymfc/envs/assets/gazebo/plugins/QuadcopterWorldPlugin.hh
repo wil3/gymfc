@@ -129,7 +129,7 @@ struct fdmPacket
     private: bool ReceiveMotorCommand();
 
     /// \brief Send state to Quadcopter
-    private: void SendState() const;
+    private: void SendState(bool motorCommandProcessed) const;
 	private: void softReset();
 
 	private: boost::thread _callback_loop_thread;

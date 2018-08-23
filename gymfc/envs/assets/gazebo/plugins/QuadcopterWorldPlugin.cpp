@@ -364,21 +364,26 @@ void QuadcopterWorldPlugin::loop_thread()
 							break;
 						}
 				}
+
 				
+  				if (this->_world->SimTime().Double() != 0.0){
+					gzerr << "Reset sent but clock did not reset, at " << this->_world->SimTime().Double() << "\n";
+				}
+			}
+
+			if (this->arduCopterOnline)
+			{
+				this->ApplyMotorForces((curTime - this->lastControllerUpdateTime).Double());
+			}
+			this->lastControllerUpdateTime = curTime;
+			if (!this->resetWorld)
+			{
+				this->_world->Step(1);
 			}
 		} 
 		if (this->arduCopterOnline)
 		{
-			this->ApplyMotorForces((curTime - this->lastControllerUpdateTime).Double());
-		}
-		this->lastControllerUpdateTime = curTime;
-		if (received && !this->resetWorld)
-		{
-			this->_world->Step(1);
-		}
-		if (this->arduCopterOnline)
-		{
-			this->SendState();
+			this->SendState(received);
 		}
 
 	}
@@ -578,7 +583,7 @@ bool QuadcopterWorldPlugin::ReceiveMotorCommand()
 }
 
 /////////////////////////////////////////////////
-void QuadcopterWorldPlugin::SendState() const
+void QuadcopterWorldPlugin::SendState(bool motorCommandProcessed) const
 {
   // send_fdm
   fdmPacket pkt;
@@ -680,7 +685,13 @@ void QuadcopterWorldPlugin::SendState() const
   pkt.velocityXYZ[1] = velNEDFrame.Y();
   pkt.velocityXYZ[2] = velNEDFrame.Z();
 
-  //pkt.iter = 6;
+  if (motorCommandProcessed){
+
+	  pkt.iter = 1;
+  } else {
+	  pkt.iter = 0;
+
+  }
 
   /*  
   char b[sizeof(pkt)];
