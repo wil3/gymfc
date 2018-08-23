@@ -89,7 +89,7 @@ class ESCClientProtocol:
             reset (bool): Reset the simulation world
         """
         self.packet_received = False
-        self.transport.sendto(PWMPacket(motor_values).encode())
+        self.transport.sendto(PWMPacket(motor_values, reset=reset).encode())
 
         # Pass the exception back if anything bad happens
         while not self.packet_received:
