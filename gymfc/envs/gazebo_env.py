@@ -126,21 +126,22 @@ class GazeboEnv(gym.Env):
 
     def __init__(self, motor_count=None, world=None, host="localhost"):
         """ Initialize the Gazebo simulation """
+        # Init the seed variable
+        self.seed()
+
         self.host = host
         # Search for open ports to allow multile instances of the environment
-        # to run in parrellel
-        self.gz_port = self._get_open_port(self.GZ_START_PORT)
-        self.aircraft_port = self._get_open_port(self.FC_PORT)
+        # to run in parrellel. Add a nonce to the start port to prevent any
+        # conflict of multiple instances usin the same ports during cleanup.
+        self.gz_port = self._get_open_port(self.GZ_START_PORT + self.np_random.randint(0,5000))
+        self.aircraft_port = self._get_open_port(self.FC_PORT + self.np_random.randint(0,5000))
         self.world = world
         self.pids = []
         self.loop = asyncio.get_event_loop()
 
-        #TODO Read this from XML incase user wants to change this in the world
-        self.stepsize = 0.001
+        self.stepsize = self.sdf_max_step_size()        
         self.last_sim_time = -self.stepsize
         
-        # Init the seed variable
-        self.seed()
 
         # Set up the action/obs spaces
         state = self.state()
@@ -149,7 +150,6 @@ class GazeboEnv(gym.Env):
         self.observation_space = spaces.Box(-np.inf, np.inf, shape=state.shape, dtype=np.float32) 
 
         self._start_sim()
-        #self.dt = self.gz.sdf_max_step_size()        
 
         # Connect to the Aircraft plugin
         writer = self.loop.create_datagram_endpoint(
@@ -251,7 +251,7 @@ class GazeboEnv(gym.Env):
 
 
     def sdf_max_step_size(self):
-        """ Return the max step size """
+        """ Return the max step size read and parsed from the world file"""
         gz_assets = os.path.join(os.path.dirname(__file__), "assets/gazebo/")
         world_filepath = os.path.join(gz_assets, "worlds", self.world)
 
