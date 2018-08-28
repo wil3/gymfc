@@ -120,7 +120,7 @@ class ESCClientProtocol:
         loop.stop()
 
 class GazeboEnv(gym.Env):
-    MAX_CONNECT_TRIES = 5
+    MAX_CONNECT_TRIES = 20
     FC_PORT = 9005
     GZ_START_PORT = 11345
 
@@ -184,10 +184,13 @@ class GazeboEnv(gym.Env):
         for i in range(self.MAX_CONNECT_TRIES):
             observations, e = await self.esc_protocol.write_motor(pwm_motor_values, reset=reset)
             if observations:
-                if observations.iteration == 1:
+                if observations.iteration == 1: # Hack, this means processed true
                     break
                 else:
-                    print ("Previous command was not processed, resending")
+                    print ("Previous command was not processed, resending pwm=", pwm_motor_values)
+                    if e:
+                        print(e)
+
             if i == self.MAX_CONNECT_TRIES -1:
                 raise SystemExit("Timeout, could not connect to Gazebo")
             await asyncio.sleep(1)
