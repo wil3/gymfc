@@ -380,7 +380,9 @@ void QuadcopterWorldPlugin::loop_thread()
 			{
 				this->_world->Step(1);
 			}
-		} 
+		} else {
+			gzerr << "Command not received t=" << this->_world->SimTime().Double() << "\n";
+		}	
 		if (this->arduCopterOnline)
 		{
 			this->SendState(received);
@@ -508,7 +510,7 @@ bool QuadcopterWorldPlugin::ReceiveMotorCommand()
   {
     // increase timeout for receive once we detect a packet from
     // ArduCopter FCS.
-    waitMs = 1000;
+    waitMs = 5000;
   }
   else
   {
@@ -526,6 +528,10 @@ bool QuadcopterWorldPlugin::ReceiveMotorCommand()
       gzerr << "received bit size (" << recvSize << ") to small,"
             << " controller expected size (" << expectedPktSize << ").\n";
     }
+	
+	if (recvSize < expectedPktSize){
+		gzwarn << "Received size " << recvSize << " less than the expected size of " << expectedPktSize << "\n";
+	}
 
     gazebo::common::Time::NSleep(100);
     if (this->arduCopterOnline)
