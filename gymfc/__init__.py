@@ -15,6 +15,19 @@ register(
     id=id,
     entry_point='gymfc.envs:GyroErrorESCVelocityFeedbackEnv',
     kwargs=episodic_kwargs)
+    
+episodic_linear = {
+    "memory_size": 1,
+    "world": "attitude-iris_1.world", 
+    "omega_bounds": [-math.pi*2,math.pi*2],
+    "max_sim_time": 1.,
+    "motor_count":4,
+    }
+id = 'AttFC_GyroErr-MotorVel_M4_E-v1'
+register(
+    id=id,
+    entry_point='gymfc.envs:GyroErrorESCVelocityFeedbackEnv_1',
+    kwargs=episodic_linear)
 
 # Optionally allow different memories
 for i in range(1,MAX_MEMORY):
