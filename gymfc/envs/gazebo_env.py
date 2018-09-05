@@ -53,7 +53,7 @@ class FDMPacket:
     def decode(self, data):
         unpacked = np.array(list(struct.unpack("<d3d3d4d3d3d4dQ", data)))
         self.timestamp = unpacked[0]
-
+        # All angular velocities from gazebo are in radians/s unless otherwise stated
         self.angular_velocity_rpy = unpacked[1:4]
         self.angular_velocity_rpy[1] *= -1
         self.angular_velocity_rpy[2] *= -1
@@ -192,6 +192,8 @@ class GazeboEnv(gym.Env):
                         print(e)
 
             if i == self.MAX_CONNECT_TRIES -1:
+                print ("Timeout connecting to Gazebo")
+                self.shutdown()
                 raise SystemExit("Timeout, could not connect to Gazebo")
             await asyncio.sleep(1)
 
