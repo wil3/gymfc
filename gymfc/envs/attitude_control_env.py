@@ -17,7 +17,7 @@ class AttitudeFlightControlEnv(GazeboEnv):
 class GyroErrorFeedbackEnv(AttitudeFlightControlEnv):
     def __init__(self, world="attitude-iris.world", 
                  omega_bounds = [-math.pi, math.pi], 
-                 max_sim_time = 1., 
+                 max_sim_time = 1.,
                  motor_count = 4, 
                  memory_size=1,): 
         
@@ -139,27 +139,43 @@ class GyroErrorESCVelocityFeedbackEnv_1(GazeboEnv):
         self.omega_target = self.sample_target()
 
     def step(self, action):
-        action = np.clip(action, self.action_space.low, self.action_space.high) 
+        action = np.clip(action, self.action_space.low, self.action_space.high)
         # Step the sim
         self.obs = self.step_sim(action)
-        self.error = self.omega_target - self.obs.angular_velocity_rpy
-        self.vel=self.obs.velocity_xyz
-        self.observation_history.append(np.concatenate([self.error, self.obs.motor_velocity,self.vel]))
+        self.observation_history.append(np.concatenate([self.obs.velocity_xyz,self.obs.angular_velocity_rpy]))
         state = self.state()
-        done = self.sim_time >= self.max_sim_time
+        self.error = self.omega_target - state
+        #state=self.state_new
+        #print("obs :{}, tar :{}".format(self.omega_target))
+        done_1 = self.sim_time >= self.max_sim_time
+        done_2 = ((state-self.omega_target)**2).mean(axis=0)<=0.01
+        done = done_1 or done_2
         reward = self.compute_reward()
-        #info = {"sim_time": self.sim_time, "sp": self.omega_target, "current_rpy": self.omega_actual, "velocity": self.vel}
+        info = {"sim_time": self.sim_time, "sp": self.omega_target, "current_rpy": self.omega_actual, "velocity": self.obs.velocity_xyz}
 
-        return state, reward, done
+        return state, reward, done,info
 
     def compute_reward(self):
         """ Compute the reward """
-        return -np.clip(np.sum(np.abs(self.error))/(self.omega_bounds[1]*3), 0, 1)
+        #return -np.clip(np.sum(np.abs(self.error))/(self.omega_bounds[1]*3), 0, 1)
+        diag=np.array([1,0.75,0.75,0,0.25,1])
+        diag=np.diag(diag)
+        et=np.array(self.error)
+        r_t=et.dot(diag)
+        r=r_t.dot(et)
+        return -r
 
     def sample_target(self):
         """ Sample a random angular velocity """
-        return  self.np_random.uniform(self.omega_bounds[0], self.omega_bounds[1], size=3)
-
+        #return  self.np_random.uniform(self.omega_bounds[0], self.omega_bounds[1], size=3)
+        return np.array([0.1,0.2,-0.1,0,0,0])
+    def state(self):
+        damn=np.array([0,0,0,0,0,0])
+        if len(self.observation_history)!=0:
+            damn = self.observation_history.pop(-1)
+            damn = np.array(damn)
+        return damn
+'''
     def state(self):
         """ Get the current state """
         # The newest will be at the end of the array
@@ -167,5 +183,7 @@ class GyroErrorESCVelocityFeedbackEnv_1(GazeboEnv):
         return np.pad(memory.ravel(), 
                       (( (6+self.motor_count) * self.memory_size) - memory.size, 0), 
                       'constant', constant_values=(0))
+'''
+
 
 

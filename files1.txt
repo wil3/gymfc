@@ -1,0 +1,6 @@
+/usr/local/lib/python3.5/dist-packages/gymfc1-0.0.2-py3.5.egg
+/usr/local/bin/conv-template
+/usr/local/bin/f2py
+/usr/local/bin/from-template
+/usr/local/bin/futurize
+/usr/local/bin/pasteurize

@@ -13,7 +13,7 @@ episodic_kwargs = {
 id = 'AttFC_GyroErr-MotorVel_M4_Ep-v0'
 register(
     id=id,
-    entry_point='gymfc.envs:GyroErrorESCVelocityFeedbackEnv',
+    entry_point='gymfc1.envs:GyroErrorESCVelocityFeedbackEnv',
     kwargs=episodic_kwargs)
     
 episodic_linear = {
@@ -26,7 +26,7 @@ episodic_linear = {
 id = 'AttFC_GyroErr-MotorVel_M4_E-v1'
 register(
     id=id,
-    entry_point='gymfc.envs:GyroErrorESCVelocityFeedbackEnv_1',
+    entry_point='gymfc1.envs:GyroErrorESCVelocityFeedbackEnv_1',
     kwargs=episodic_linear)
 
 # Optionally allow different memories
@@ -41,7 +41,7 @@ for i in range(1,MAX_MEMORY):
     id = 'AttFC_GyroErr{}-MotorVel{}_M4_Ep-v0'.format(i, i)
     register(
         id=id,
-        entry_point='gymfc.envs:GyroErrorESCVelocityFeedbackEnv',
+        entry_point='gymfc1.envs:GyroErrorESCVelocityFeedbackEnv',
         kwargs=episodic_kwargs)
 
 
@@ -57,7 +57,7 @@ continuous_kwargs = {
 id = 'AttFC_GyroErr-MotorVel_M4_Con-v0'
 register(
     id=id,
-    entry_point='gymfc.envs:GyroErrorESCVelocityFeedbackContinuousEnv',
+    entry_point='gymfc1.envs:GyroErrorESCVelocityFeedbackContinuousEnv',
     kwargs=continuous_kwargs)
 
 # And with extra memory
@@ -73,7 +73,7 @@ for i in range(1,MAX_MEMORY):
     id = 'AttFC_GyroErr{}-MotorVel{}_M4_Con-v0'.format(i, i)
     register(
         id=id,
-        entry_point='gymfc.envs:GyroErrorESCVelocityFeedbackContinuousEnv',
+        entry_point='gymfc1.envs:GyroErrorESCVelocityFeedbackContinuousEnv',
         kwargs=continuous_kwargs)
 
 
@@ -89,5 +89,5 @@ for i in range(1,MAX_MEMORY):
     id = 'AttFC_GyroErr{}_M4_Ep-v0'.format(i)
     register(
         id=id,
-        entry_point='gymfc.envs:GyroErrorFeedbackEnv',
+        entry_point='gymfc1.envs:GyroErrorFeedbackEnv',
         kwargs=episodic_kwargs)
