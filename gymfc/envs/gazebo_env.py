@@ -13,19 +13,18 @@ import signal
 import sys
 import xml.etree.ElementTree as ET
 import psutil
-from ..pygazebo import pygazebo
-from ..pygazebo.msg.world_control_pb2 import WorldControl
-from ..pygazebo.msg.world_stats_pb2 import WorldStatistics
 logger = logging.getLogger("gymfc")
 
 class PWMPacket:
-    def __init__(self, pwm_values):
+    def __init__(self, pwm_values, reset=False):
         """ Iniitalize a PWM motor packet 
 
         Args:
-            pwm (np.array): an array of PWM values in the range [0, 1000] 
+            pwm_values (np.array): an array of PWM values in the range [0, 1000] 
+            reset: True if the simulation should be reset
         """
         self.pwm_values = pwm_values
+        self.reset = int(reset)
 
     def encode(self, motor_map = [1, 2, 3, 0]):
         """  Create and return a PWM packet 
@@ -41,7 +40,10 @@ class PWMPacket:
         motor_velocities = [self.pwm_values[motor_map[i]] / scale \
                             for i in range(len(self.pwm_values))]
 
-        return struct.pack("<{}f".format(len(motor_velocities)), *motor_velocities)
+        # Put the integer first, because of the struct alignment in the 
+        # Gazebo plugin. Send this as an int incase we later want to have 
+        # this represent other modes we want to control in the simulator
+        return struct.pack("<i{}f".format(len(motor_velocities)), self.reset, *motor_velocities)
 
     def __str__(self):
         return str(self.pwm)
@@ -51,7 +53,7 @@ class FDMPacket:
     def decode(self, data):
         unpacked = np.array(list(struct.unpack("<d3d3d4d3d3d4dQ", data)))
         self.timestamp = unpacked[0]
-
+        # All angular velocities from gazebo are in radians/s unless otherwise stated
         self.angular_velocity_rpy = unpacked[1:4]
         self.angular_velocity_rpy[1] *= -1
         self.angular_velocity_rpy[2] *= -1
@@ -73,28 +75,32 @@ class ESCClientProtocol:
         """ Initialize the electronic speed controller client """
         self.obs = None
         self.packet_received = False
+        self.exception = None
 
     def connection_made(self, transport):
         self.transport = transport
 
-    async def write_motor(self, motor_values):
+    async def write_motor(self, motor_values, reset=False):
         """ Write the motor values to the ESC and then return 
-        the current sensor values.
+        the current sensor values and an exception if anything bad happend.
         
         Args:
             motor_values (np.array): motor values in range [0, 1000]
+            reset (bool): Reset the simulation world
         """
         self.packet_received = False
-        self.transport.sendto(PWMPacket(motor_values).encode())
+        self.transport.sendto(PWMPacket(motor_values, reset=reset).encode())
 
+        # Pass the exception back if anything bad happens
         while not self.packet_received:
+            if self.exception:
+                return (None, self.exception)
             await asyncio.sleep(0.001)
 
-        return self.obs
+        return (self.obs, None)
 
     def error_received(self, exc):
-        # FIXME add better error handling
-        logger.error(exc)
+        self.exception = exc
 
     def datagram_received(self, data, addr):
         """ Receive a UDP datagram
@@ -103,6 +109,8 @@ class ESCClientProtocol:
             data (bytes): raw bytes of packet payload 
             addr (string): address of the sender
         """
+        # Everything is OK, reset
+        self.exception = None
         self.packet_received = True
         self.obs = FDMPacket().decode(data)
     
@@ -112,29 +120,28 @@ class ESCClientProtocol:
         loop.stop()
 
 class GazeboEnv(gym.Env):
-    MAX_CONNECT_TRIES = 5
+    MAX_CONNECT_TRIES = 20
     FC_PORT = 9005
     GZ_START_PORT = 11345
 
     def __init__(self, motor_count=None, world=None, host="localhost"):
         """ Initialize the Gazebo simulation """
-        self.host = host
-        # Search for open ports to allow multile instances of the environment
-        # to run in parrellel
-        self.gz_port = self._get_open_port(self.GZ_START_PORT)
-        self.aircraft_port = self._get_open_port(self.FC_PORT)
-        self.world = world
-        self.pids = []
-        self.loop = asyncio.get_event_loop()
-        
         # Init the seed variable
         self.seed()
 
-	# Setup reset message 
-        self.reset_message = WorldControl()
-        self.reset_message.reset.time_only = True
-        # Keep the current world stats here
-        self.world_stats = None
+        self.host = host
+        # Search for open ports to allow multile instances of the environment
+        # to run in parrellel. Add a nonce to the start port to prevent any
+        # conflict of multiple instances usin the same ports during cleanup.
+        self.gz_port = self._get_open_port(self.GZ_START_PORT + self.np_random.randint(0,5000))
+        self.aircraft_port = self._get_open_port(self.FC_PORT + self.np_random.randint(0,5000))
+        self.world = world
+        self.pids = []
+        self.loop = asyncio.get_event_loop()
+
+        self.stepsize = self.sdf_max_step_size()        
+        self.last_sim_time = -self.stepsize
+        
 
         # Set up the action/obs spaces
         state = self.state()
@@ -143,7 +150,6 @@ class GazeboEnv(gym.Env):
         self.observation_space = spaces.Box(-np.inf, np.inf, shape=state.shape, dtype=np.float32) 
 
         self._start_sim()
-        #self.dt = self.gz.sdf_max_step_size()        
 
         # Connect to the Aircraft plugin
         writer = self.loop.create_datagram_endpoint(
@@ -162,7 +168,7 @@ class GazeboEnv(gym.Env):
 
         return self.loop.run_until_complete(self._step_sim(action))
 
-    async def _step_sim(self, action):
+    async def _step_sim(self, action, reset=False):
         """Complete a single simulation step, return a tuple containing
         the simulation time and the state
 
@@ -173,16 +179,31 @@ class GazeboEnv(gym.Env):
         # Convert to motor input to PWM range [0, 1000] to match
         # Betaflight mixer output
         pwm_motor_values = [ ((m + 1) * 500) for m in action]
-        observations = await self.esc_protocol.write_motor(pwm_motor_values)
+        # Try and send command
+        observations = None
+        for i in range(self.MAX_CONNECT_TRIES):
+            observations, e = await self.esc_protocol.write_motor(pwm_motor_values, reset=reset)
+            if observations:
+                if observations.iteration == 1: # Hack, this means processed true
+                    break
+                else:
+                    print ("Previous command was not processed, resending pwm=", pwm_motor_values)
+                    if e:
+                        print(e)
+
+            if i == self.MAX_CONNECT_TRIES -1:
+                print ("Timeout connecting to Gazebo")
+                self.shutdown()
+                raise SystemExit("Timeout, could not connect to Gazebo")
+            await asyncio.sleep(1)
+
         # Make these visible
         self.omega_actual = observations.angular_velocity_rpy
         self.sim_time = observations.timestamp 
+        assert np.isclose(self.sim_time, (self.last_sim_time + self.stepsize), 1e-6), "New time {} is not the expected time {}".format(self.sim_time, self.last_sim_time + self.stepsize)
+        self.last_sim_time = self.sim_time 
         return observations
     
-    def reset2(self):
-        # FIXME When the leak is fixed in gz use this
-        cp = subprocess.run("gz world -t", shell=True)
-
     def _signal_handler(self, signal, frame):
         print("Ctrl+C detected, shutting down gazebo and application")
         self.shutdown()
@@ -236,12 +257,9 @@ class GazeboEnv(gym.Env):
         p = subprocess.Popen(["gzserver", "--verbose", target_world], shell=False) 
         self.pids.append(p.pid)
 
-        # Connect to the Protobuff API
-        self.loop.run_until_complete(self._connect())
-        logger.debug("Connected to Gazebo")
 
     def sdf_max_step_size(self):
-        """ Return the max step size """
+        """ Return the max step size read and parsed from the world file"""
         gz_assets = os.path.join(os.path.dirname(__file__), "assets/gazebo/")
         world_filepath = os.path.join(gz_assets, "worlds", self.world)
 
@@ -280,52 +298,11 @@ class GazeboEnv(gym.Env):
         self.kill()
         sys.exit(0)
 
-    async def _connect(self):
-        """ Connect to Gazebo Protobuff API """
-        for i in range(self.MAX_CONNECT_TRIES):
-            try:
-                self.manager = await pygazebo.connect((self.host, self.gz_port)) 
-                break
-            except Exception as e:
-                print("Exception occured connecting to Gazebo retrying ....", e)
-                await asyncio.sleep(5)
-
-        if not self.manager:
-            self.shutdown()
-        # Initialize a world control publisher
-        self.pub_world_control = await self.manager.advertise('/gazebo/default/world_control',
-                                'gazebo.msgs.WorldControl')
-
-        # Note this topic publishes at T=0.2 or 5Hz so its only used to check 
-        # for resets. 
-        world_stats_subscriber = self.manager.subscribe('/gazebo/default/world_stats', 
-                    'gazebo.msgs.WorldStatistics', self._world_stats_callback)
-
-        # Wait until we get the first one
-        while not self.world_stats:
-            await world_stats_subscriber.wait_for_connection()
-            await asyncio.sleep(0.1)
-
-    async def _reset(self):
-        """  Reset the simulator time using Google Protobuff API """
-
-        #There is a bug using the gz utility that does not close 
-        #connections affecting multiple Gz versions
-        #https://bitbucket.org/osrf/gazebo/issues/2397/gzserver-doesnt-close-disconnected-sockets
-        await self.pub_world_control.publish(self.reset_message)
-        while True:
-            if self.world_stats.iterations == 0:
-                break
-            await asyncio.sleep(0.01)
-
-    def _world_stats_callback(self, data):
-        self.world_stats = WorldStatistics()
-        self.world_stats.ParseFromString(data)
-
     def reset(self):
-        self.loop.run_until_complete(self._reset())
-        self.loop.run_until_complete(self._step_sim(self.action_space.low))
+        self.last_sim_time = -self.stepsize
+        self.loop.run_until_complete(self._step_sim(self.action_space.low, reset=True))
         self.omega_target = self.sample_target().copy()
+        assert np.isclose(self.sim_time, 0.0, 1e-6), "sim time after reset is incorrect, {} ".format(self.sim_time)
         return self.state()
 
     def close(self):

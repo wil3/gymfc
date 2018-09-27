@@ -296,6 +296,7 @@ void QuadcopterWorldPlugin::processSDF(sdf::ElementPtr _sdf)
     this->loopRate, 100);
 
   // Optional parameters to start the aircraft off in a spin
+  this->resetWithRandomAngularVelocity = FALSE;
   if (_sdf->HasElement("resetState"))
   {
 		sdf::ElementPtr resetStateSDF = _sdf->GetElement("resetState");
@@ -324,7 +325,7 @@ void QuadcopterWorldPlugin::softReset(){
 void QuadcopterWorldPlugin::loop_thread()
 {
 	double msPeriod = 1000.0/this->loopRate;
-
+    this->resetWorld = FALSE;
 	while (1){
 
 		std::lock_guard<std::mutex> lock(this->mutex);
@@ -338,13 +339,11 @@ void QuadcopterWorldPlugin::loop_thread()
 		bool received = this->ReceiveMotorCommand();
 
 		if (received){
-			// Theres is an issue even after a reset 
-			// the IMU isnt reset and sending old values
-			if (this->_world->Iterations() == 0)
+			if (this->resetWorld)
 			{
 				// Cant do a full reset of the RNG gets reset as well
 				this->softReset();
-				double error = 0.02;// About 1 deg/s
+				double error = 0.0001;// About 0.006 deg/s
 				double spR = 0.0;
 				double spP = 0.0;
 				double spY = 0.0;
@@ -365,21 +364,28 @@ void QuadcopterWorldPlugin::loop_thread()
 							break;
 						}
 				}
+
 				
+  				if (this->_world->SimTime().Double() != 0.0){
+					gzerr << "Reset sent but clock did not reset, at " << this->_world->SimTime().Double() << "\n";
+				}
 			}
-		} 
+
+			if (this->arduCopterOnline)
+			{
+				this->ApplyMotorForces((curTime - this->lastControllerUpdateTime).Double());
+			}
+			this->lastControllerUpdateTime = curTime;
+			if (!this->resetWorld)
+			{
+				this->_world->Step(1);
+			}
+		} else {
+			//gzerr << "Command not received t=" << this->_world->SimTime().Double() << "\n";
+		}	
 		if (this->arduCopterOnline)
 		{
-			this->ApplyMotorForces((curTime - this->lastControllerUpdateTime).Double());
-		}
-		this->lastControllerUpdateTime = curTime;
-		if (received)
-		{
-			this->_world->Step(1);
-		}
-		if (this->arduCopterOnline)
-		{
-			this->SendState();
+			this->SendState(received);
 		}
 
 	}
@@ -437,7 +443,6 @@ bool QuadcopterWorldPlugin::Bind(const char *_address, const uint16_t _port)
 	//socklen_t addrlen = sizeof(this->remaddr);
 	this->remaddrlen = sizeof(this->remaddr);
 	int recvlen;
-	char buf[] = "hi";
 
     FD_ZERO(&fds);
     FD_SET(this->handle, &fds);
@@ -505,7 +510,7 @@ bool QuadcopterWorldPlugin::ReceiveMotorCommand()
   {
     // increase timeout for receive once we detect a packet from
     // ArduCopter FCS.
-    waitMs = 1000;
+    waitMs = 5000;
   }
   else
   {
@@ -514,7 +519,7 @@ bool QuadcopterWorldPlugin::ReceiveMotorCommand()
   }
   ssize_t recvSize = this->Recv(&pkt, sizeof(ServoPacket), waitMs);
   ssize_t expectedPktSize =
-    sizeof(pkt.motorSpeed[0])*this->rotors.size();//  + sizeof(pkt.seq);
+    sizeof(pkt.motorSpeed[0])*this->rotors.size()  + sizeof(pkt.resetWorld);
   if ((recvSize == -1) || (recvSize < expectedPktSize))
   {
     // didn't receive a packet
@@ -523,6 +528,10 @@ bool QuadcopterWorldPlugin::ReceiveMotorCommand()
       gzerr << "received bit size (" << recvSize << ") to small,"
             << " controller expected size (" << expectedPktSize << ").\n";
     }
+	
+	if (recvSize < expectedPktSize){
+		//gzwarn << "Received size " << recvSize << " less than the expected size of " << expectedPktSize << "\n";
+	}
 
     gazebo::common::Time::NSleep(100);
     if (this->arduCopterOnline)
@@ -570,12 +579,17 @@ bool QuadcopterWorldPlugin::ReceiveMotorCommand()
       }
 	  commandProcessed = TRUE;
     }
+      if (pkt.resetWorld == 1) {
+          this->resetWorld = TRUE;
+      } else {
+          this->resetWorld = FALSE;
+      }
   }
   return commandProcessed;
 }
 
 /////////////////////////////////////////////////
-void QuadcopterWorldPlugin::SendState() const
+void QuadcopterWorldPlugin::SendState(bool motorCommandProcessed) const
 {
   // send_fdm
   fdmPacket pkt;
@@ -677,7 +691,13 @@ void QuadcopterWorldPlugin::SendState() const
   pkt.velocityXYZ[1] = velNEDFrame.Y();
   pkt.velocityXYZ[2] = velNEDFrame.Z();
 
-  //pkt.iter = 6;
+  if (motorCommandProcessed){
+
+	  pkt.iter = 1;
+  } else {
+	  pkt.iter = 0;
+
+  }
 
   /*  
   char b[sizeof(pkt)];
@@ -709,7 +729,8 @@ Rotor::Rotor()
     this->frequencyCutoff = this->kDefaultFrequencyCutoff;
     this->samplingRate = this->kDefaultSamplingRate;
 	*/
-
+	
+	// P, I, D, Imin, Imax, cmdMax, cmdMin
     this->pid.Init(0.1, 0, 0, 0, 0, 1.0, -1.0);
 }
 

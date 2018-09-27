@@ -33,11 +33,11 @@ namespace gazebo
 /// \brief A servo packet.
 struct ServoPacket
 {
-  /// \brief Motor speed data.
-  float motorSpeed[MAX_MOTORS];
+	/// \brief Flag to indicate the world should be reset
+	int resetWorld;
+	/// \brief Motor speed data.
+	float motorSpeed[MAX_MOTORS];
 
-  /// \brief packet sequence to keep in sync
-//  unsigned int seq;
 };
 
 /// \brief Flight Dynamics Model packet that is sent back to the Quadcopter
@@ -129,7 +129,7 @@ struct fdmPacket
     private: bool ReceiveMotorCommand();
 
     /// \brief Send state to Quadcopter
-    private: void SendState() const;
+    private: void SendState(bool motorCommandProcessed) const;
 	private: void softReset();
 
 	private: boost::thread _callback_loop_thread;
@@ -170,6 +170,8 @@ struct fdmPacket
 	/// \brief Pointer to an IMU sensor
 	public: sensors::ImuSensorPtr imuSensor;
 
+	/// \brief True if world should be reset
+	public: bool resetWorld;
 	/// \brief false before ardupilot controller is online
 	/// to allow gazebo to continue without waiting
 	public: bool arduCopterOnline;
