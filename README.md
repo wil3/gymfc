@@ -22,7 +22,10 @@ Note, Ubuntu is the only OS currently supported primarily because controllers mu
 trained in headless mode on a server. I welcome any PRs and feedback for getting
 it installed on other OSs.   
 1. Download and install [Gazebo 8](http://gazebosim.org/download) (PRs welcome
-   for Gazebo 9).
+   for Gazebo 9). Note the one-liner install script has been updated to install
+Gazebo 9. Find the install script for Gazebo 8
+[here](https://bitbucket.org/osrf/release-tools/raw/49a91748d2ce8521b34178609de25cbd089442c2/one-line-installations/gazebo.sh).
+This is the recommended way to install the simulator. Tested on Ubuntu 16.04 LTS.
 2. From root directory of this project, `sudo pip3 install -e .`
 3. Confirm environment is operating successfully by running an evaluation for
    the
