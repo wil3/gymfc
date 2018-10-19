@@ -13,6 +13,7 @@ import signal
 import sys
 import xml.etree.ElementTree as ET
 import psutil
+import time
 logger = logging.getLogger("gymfc")
 
 class PWMPacket:
@@ -64,7 +65,7 @@ class FDMPacket:
         self.position_xyz = unpacked[14:17]
         #FIXME move this to the end because its variable
         self.motor_velocity = unpacked[17:21]
-        self.iteration = unpacked[21]
+        self.status_code = unpacked[21]
         unpacked.flags.writeable = False # Sensor values are readonly 
         return self
 
@@ -140,8 +141,8 @@ class GazeboEnv(gym.Env):
         self.loop = asyncio.get_event_loop()
 
         self.stepsize = self.sdf_max_step_size()        
+        self.sim_time = 0
         self.last_sim_time = -self.stepsize
-        
 
         # Set up the action/obs spaces
         state = self.state()
@@ -150,6 +151,11 @@ class GazeboEnv(gym.Env):
         self.observation_space = spaces.Box(-np.inf, np.inf, shape=state.shape, dtype=np.float32) 
 
         self._start_sim()
+
+        self.sim_stats = {}
+        self.sim_stats["steps"] = 0
+        self.sim_stats["packets_dropped"] = 0
+        self.sim_stats["time_start_seconds"] = time.time()
 
         # Connect to the Aircraft plugin
         writer = self.loop.create_datagram_endpoint(
@@ -179,12 +185,16 @@ class GazeboEnv(gym.Env):
         # Convert to motor input to PWM range [0, 1000] to match
         # Betaflight mixer output
         pwm_motor_values = [ ((m + 1) * 500) for m in action]
-        # Try and send command
+
+        # Packets are sent over UDP so they can be dropped, there is no 
+        # gaurentee. First we try and send command. If an error occurs in transition 
+        # try again or for some reason something goes wrong in the simualator and 
+        # the packet wasnt processsed correctly. 
         observations = None
         for i in range(self.MAX_CONNECT_TRIES):
             observations, e = await self.esc_protocol.write_motor(pwm_motor_values, reset=reset)
             if observations:
-                if observations.iteration == 1: # Hack, this means processed true
+                if observations.status_code == 1: # Process successful
                     break
                 else:
                     print ("Previous command was not processed, resending pwm=", pwm_motor_values)
@@ -197,11 +207,24 @@ class GazeboEnv(gym.Env):
                 raise SystemExit("Timeout, could not connect to Gazebo")
             await asyncio.sleep(1)
 
+
         # Make these visible
         self.omega_actual = observations.angular_velocity_rpy
         self.sim_time = observations.timestamp 
-        assert np.isclose(self.sim_time, (self.last_sim_time + self.stepsize), 1e-6), "New time {} is not the expected time {}".format(self.sim_time, self.last_sim_time + self.stepsize)
+        # In the event a packet is dropped we could be out of sync. This has only ever been
+        # observed when dozens of simulations are run in parellel. We need the speed 
+        # of UDP so until this becomes an issue just track how many we suspect were dropped.
+        if not np.isclose(self.sim_time, (self.last_sim_time + self.stepsize), 1e-6):
+            self.sim_stats["packets_dropped"] += 1
+
+
+
         self.last_sim_time = self.sim_time 
+
+        
+
+        self.sim_stats["steps"] += 1
+
         return observations
     
     def _signal_handler(self, signal, frame):
@@ -255,6 +278,7 @@ class GazeboEnv(gym.Env):
         target_world = os.path.join(gz_assets, "worlds", self.world)
         
         p = subprocess.Popen(["gzserver", "--verbose", target_world], shell=False) 
+        print ("Starting gzserver process with ID=", p.pid)
         self.pids.append(p.pid)
 
 
@@ -288,15 +312,25 @@ class GazeboEnv(gym.Env):
 
         raise Exception("Could not find open port")
 
-    def kill(self):
+    def kill_sim(self):
         """ Kill the gazebo processes based on the original PID  """
         for pid in self.pids:
             p = subprocess.run("kill {}".format(pid), shell=True)
-            print("Kill process ", pid)
+            print("Killing process with ID=", pid)
+
+    def print_post_simulation_stats(self):
+        print ("\nSimulation Stats")
+        print ("-----------------")
+        key_len = max(list(map(len,list(self.sim_stats.keys())))) + 5
+        for key, values in self.sim_stats.items():
+            print("{0: <{fill}}{1}".format(key, values, fill=key_len))
+        print ("\n")
 
     def shutdown(self):
-        self.kill()
-        sys.exit(0)
+        self.sim_stats["time_lapse_hours"] = (time.time() - self.sim_stats["time_start_seconds"])/60*60
+        self.print_post_simulation_stats()
+        self.kill_sim()
+        #sys.exit(0)
 
     def reset(self):
         self.last_sim_time = -self.stepsize
@@ -306,7 +340,7 @@ class GazeboEnv(gym.Env):
         return self.state()
 
     def close(self):
-        self.kill()
+        self.shutdown()
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
