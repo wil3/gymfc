@@ -595,7 +595,6 @@ void QuadcopterWorldPlugin::SendState(bool motorCommandProcessed) const
   fdmPacket pkt;
 
   pkt.timestamp = this->_world->SimTime().Double();
-  pkt.iter = static_cast<uint64_t> (this->_world->Iterations());
 
   for (size_t i = 0; i < this->rotors.size(); ++i)
   {
@@ -692,11 +691,9 @@ void QuadcopterWorldPlugin::SendState(bool motorCommandProcessed) const
   pkt.velocityXYZ[2] = velNEDFrame.Z();
 
   if (motorCommandProcessed){
-
-	  pkt.iter = 1;
+	  pkt.status_code = 1;
   } else {
-	  pkt.iter = 0;
-
+	  pkt.status_code = 0;
   }
 
   /*  

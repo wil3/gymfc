@@ -64,7 +64,7 @@ struct fdmPacket
 
   double motorVelocity[4];
  // uint32_t iter;
-  uint64_t iter;
+  uint64_t status_code;
   
 //  unsigned int seq;
 };
