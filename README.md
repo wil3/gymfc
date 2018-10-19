@@ -26,7 +26,7 @@ it installed on other OSs.
 Gazebo 9. Find the install script for Gazebo 8
 [here](https://bitbucket.org/osrf/release-tools/raw/49a91748d2ce8521b34178609de25cbd089442c2/one-line-installations/gazebo.sh).
 This is the recommended way to install the simulator. Tested on Ubuntu 16.04 LTS.
-2. From root directory of this project, `sudo pip3 install -e .`
+2. From root directory of this project, `pip3 install -e .`
 3. Confirm environment is operating successfully by running an evaluation for
    the
    included PID controller tuned for the Iris quadcopter used in the environment
