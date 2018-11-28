@@ -17,17 +17,18 @@ import time
 logger = logging.getLogger("gymfc")
 
 class PWMPacket:
-    def __init__(self, pwm_values, reset=False):
-        """ Iniitalize a PWM motor packet 
+    def __init__(self, pwm_values, motor_mapping, reset=False):
+        """ Initialize a PWM motor packet 
 
         Args:
             pwm_values (np.array): an array of PWM values in the range [0, 1000] 
             reset: True if the simulation should be reset
         """
         self.pwm_values = pwm_values
+        self.motor_mapping = motor_mapping
         self.reset = int(reset)
 
-    def encode(self, motor_map = [1, 2, 3, 0]):
+    def encode(self, motor_map = []):
         """  Create and return a PWM packet 
         
         Args:
@@ -38,7 +39,7 @@ class PWMPacket:
         # There is a different motor mapping for the digital twin.
         # This doesnt matter when training, the agent doesn't care,
         # this only matters for when transferring to hardware.
-        motor_velocities = [self.pwm_values[motor_map[i]] / scale \
+        motor_velocities = [self.pwm_values[self.motor_mapping[i]] / scale \
                             for i in range(len(self.pwm_values))]
 
         # Put the integer first, because of the struct alignment in the 
@@ -50,6 +51,8 @@ class PWMPacket:
         return str(self.pwm)
 
 class FDMPacket:
+    def __init__(self, motor_mapping):
+        self.motor_mapping = motor_mapping
 
     def decode(self, data):
         unpacked = np.array(list(struct.unpack("<d3d3d4d3d3d4dQ", data)))
@@ -64,7 +67,11 @@ class FDMPacket:
         self.velocity_xyz = unpacked[11:14]
         self.position_xyz = unpacked[14:17]
         #FIXME move this to the end because its variable
-        self.motor_velocity = unpacked[17:21]
+        raw_motor_velocities = unpacked[17:21]
+        self.motor_velocity = [raw_motor_velocities[self.motor_mapping[i]] 
+                            for i in range(len(raw_motor_velocities))]
+
+
         self.status_code = unpacked[21]
         unpacked.flags.writeable = False # Sensor values are readonly 
         return self
@@ -72,8 +79,9 @@ class FDMPacket:
 
 class ESCClientProtocol:
 
-    def __init__(self):
+    def __init__(self, motor_mapping):
         """ Initialize the electronic speed controller client """
+        self.motor_mapping = motor_mapping
         self.obs = None
         self.packet_received = False
         self.exception = None
@@ -90,7 +98,7 @@ class ESCClientProtocol:
             reset (bool): Reset the simulation world
         """
         self.packet_received = False
-        self.transport.sendto(PWMPacket(motor_values, reset=reset).encode())
+        self.transport.sendto(PWMPacket(motor_values, self.motor_mapping, reset=reset).encode())
 
         # Pass the exception back if anything bad happens
         while not self.packet_received:
@@ -113,7 +121,7 @@ class ESCClientProtocol:
         # Everything is OK, reset
         self.exception = None
         self.packet_received = True
-        self.obs = FDMPacket().decode(data)
+        self.obs = FDMPacket(self.motor_mapping).decode(data)
     
     def connection_lost(self, exc):
         print("Socket closed, stop the event loop")
@@ -129,6 +137,7 @@ class GazeboEnv(gym.Env):
         self.world = kwargs["world"]
         motor_count = kwargs["motor_count"]
         self.setup_file = kwargs["setup_file"]
+        motor_mapping = kwargs["motor_mapping"]
 
         # Init the seed variable
         self.seed()
@@ -172,7 +181,7 @@ class GazeboEnv(gym.Env):
 
         # Connect to the Aircraft plugin
         writer = self.loop.create_datagram_endpoint(
-            lambda: ESCClientProtocol(),
+            lambda: ESCClientProtocol(motor_mapping),
             remote_addr=(self.host, self.aircraft_port))
         _, self.esc_protocol = self.loop.run_until_complete(writer) 
 
