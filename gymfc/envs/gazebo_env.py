@@ -122,21 +122,31 @@ class ESCClientProtocol:
 
 class GazeboEnv(gym.Env):
     MAX_CONNECT_TRIES = 20
-    FC_PORT = 9005
-    GZ_START_PORT = 11345
 
-    def __init__(self, motor_count=None, world=None, host="localhost"):
+    def __init__(self, **kwargs):
         """ Initialize the Gazebo simulation """
+        self.host = kwargs["hostname"]
+        self.world = kwargs["world"]
+        motor_count = kwargs["motor_count"]
+
         # Init the seed variable
         self.seed()
 
-        self.host = host
         # Search for open ports to allow multile instances of the environment
         # to run in parrellel. Add a nonce to the start port to prevent any
         # conflict of multiple instances usin the same ports during cleanup.
-        self.gz_port = self._get_open_port(self.GZ_START_PORT + self.np_random.randint(0,5000))
-        self.aircraft_port = self._get_open_port(self.FC_PORT + self.np_random.randint(0,5000))
-        self.world = world
+        if kwargs["use_static_network_ports"]:
+            self.gz_port = kwargs["aircraft_start_port"]  
+            self.aircraft_port = kwargs["gazebo_start_port"]  
+        else:
+            self.gz_port = self._get_open_port(
+                self.np_random.randint(kwargs["gazebo_start_port"],kwargs["gazebo_end_port"])
+            )
+            self.aircraft_port = self._get_open_port(
+                self.np_random.randint(kwargs["aircraft_start_port"],kwargs["aircraft_end_port"])
+            )
+
+        # Track process IDs so we can kill em
         self.pids = []
         self.loop = asyncio.get_event_loop()
 
@@ -152,6 +162,8 @@ class GazeboEnv(gym.Env):
 
         self._start_sim()
 
+        # Set up some stats to report at the end, connection are over UDP
+        # so it can be useful to see if anything is dropped
         self.sim_stats = {}
         self.sim_stats["steps"] = 0
         self.sim_stats["packets_dropped"] = 0
@@ -160,7 +172,7 @@ class GazeboEnv(gym.Env):
         # Connect to the Aircraft plugin
         writer = self.loop.create_datagram_endpoint(
             lambda: ESCClientProtocol(),
-            remote_addr=(host, self.aircraft_port))
+            remote_addr=(self.host, self.aircraft_port))
         _, self.esc_protocol = self.loop.run_until_complete(writer) 
 
     def step_sim(self, action):
@@ -239,12 +251,24 @@ class GazeboEnv(gym.Env):
         """
         return os.environ[name] if name in os.environ else ""
 
+    def update_env_variables(self, source_file):
+	# Source the file in the current environment then use env to dump the 
+        # current environment variables (including the ones sourced) then
+        # set these variables in the python environment 
+        command = ". {}; env".format(source)
+        pipe = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
+        output = pipe.communicate()[0]
+        env = dict((line.decode("utf-8").split("=", 1) for line in output.splitlines()))
+        os.environ.update(env)
+
     def _start_sim(self):
         """ Start Gazebo """
 
         signal.signal(signal.SIGINT, self._signal_handler)
 
-        #Port the aircraft reads in
+        #Port the aircraft reads in through this environment variable,
+        # this is the network channel set up to pass sensor and ESC
+        # data back and forth
         os.environ["SITL_PORT"] = str(self.aircraft_port)
 
         # Taken from /usr/share/gazebo-8/setup.sh

@@ -6,6 +6,20 @@ default_kwargs = {
     "world": "attitude-iris.world", 
     "omega_bounds": [-math.pi*2,math.pi*2],
     "motor_count":4,
+    "setup_file": "/usr/share/gazebo-8/setup.sh",
+    "rate_units": "rad/s",
+    "rotor_units": "RPM",
+    # For setting up network connections to the aircraft and gazebo
+    "hostname": "localhost",
+    # If this is False then a random port will be sampled from the supplied range.
+    # This is helpful when running multiple in parellel and it takes time to 
+    # tear down an old connection. If this is set to True then the
+    # start port is used. 
+    "use_static_network_ports": False,
+    "aircraft_start_port": 9005,
+    "aircraft_end_port": 10005,
+    "gazebo_start_port": 11345,
+    "gazebo_end_port": 12345,
 }
 
 #Episodic task with ESC supporting sensors for telemetry
