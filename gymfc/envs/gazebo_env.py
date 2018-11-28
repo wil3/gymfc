@@ -230,12 +230,7 @@ class GazeboEnv(gym.Env):
         if not np.isclose(self.sim_time, (self.last_sim_time + self.stepsize), 1e-6):
             self.sim_stats["packets_dropped"] += 1
 
-
-
         self.last_sim_time = self.sim_time 
-
-        
-
         self.sim_stats["steps"] += 1
 
         return observations
@@ -243,14 +238,6 @@ class GazeboEnv(gym.Env):
     def _signal_handler(self, signal, frame):
         print("Ctrl+C detected, shutting down gazebo and application")
         self.shutdown()
-
-    def _get_env_var(self, name):
-        """ Get an environment variable if it exists 
-        
-        Args:
-            name (string): variable to get
-        """
-        return os.environ[name] if name in os.environ else ""
 
     def update_env_variables(self, source_file):
 	# Source the file in the current environment then use env to dump the 
@@ -290,7 +277,8 @@ class GazeboEnv(gym.Env):
         os.environ.update(env)
 
     def _start_sim(self):
-        """ Start Gazebo """
+        """ Start Gazebo by first updating all the necessary environment
+        variables and then starting the Gazebo server"""
 
         signal.signal(signal.SIGINT, self._signal_handler)
 
