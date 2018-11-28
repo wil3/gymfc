@@ -128,6 +128,7 @@ class GazeboEnv(gym.Env):
         self.host = kwargs["hostname"]
         self.world = kwargs["world"]
         motor_count = kwargs["motor_count"]
+        self.setup_file = kwargs["setup_file"]
 
         # Init the seed variable
         self.seed()
@@ -255,10 +256,37 @@ class GazeboEnv(gym.Env):
 	# Source the file in the current environment then use env to dump the 
         # current environment variables (including the ones sourced) then
         # set these variables in the python environment 
-        command = ". {}; env".format(source)
+        command = ". {}; env".format(source_file)
         pipe = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
         output = pipe.communicate()[0]
-        env = dict((line.decode("utf-8").split("=", 1) for line in output.splitlines()))
+        lines = output.splitlines()
+        env = {}
+        separated_v = ""
+        last_k = None
+        # OK this is super annoying to parse the env vars this way. Vars 
+        # can have newline characters and any method to return env vars insert 
+        # new line delimiters so we need to walk through and if a key value 
+        # pair is separated by new lines combine them when we come across the 
+        # next valid one
+        for i in range(len(lines)):
+            line = lines[i].decode("utf-8")
+            kv = line.split("=", 1)         
+            # There was a line break and the new env didnt start
+            if len(kv) < 2:
+                separated_v += kv[0]
+            else:
+                # If we start a new var that means if there was 
+                # a separated value its now the end
+                if len(separated_v) > 0:
+                    env[last_k] = separated_v
+                    separated_v = ""
+                env[kv[0]] = kv[1]
+                last_k = kv[0]
+
+        # if it happens to be the last key
+        if len(separated_v) > 0:
+            env[last_k] = separated_v
+
         os.environ.update(env)
 
     def _start_sim(self):
@@ -266,43 +294,34 @@ class GazeboEnv(gym.Env):
 
         signal.signal(signal.SIGINT, self._signal_handler)
 
-        #Port the aircraft reads in through this environment variable,
+        # Port the aircraft reads in through this environment variable,
         # this is the network channel set up to pass sensor and ESC
         # data back and forth
         os.environ["SITL_PORT"] = str(self.aircraft_port)
 
-        # Taken from /usr/share/gazebo-8/setup.sh
-        ld_library_path = self._get_env_var("LD_LIBRARY_PATH")
-        # if loaded previously
-        gz_resource =   self._get_env_var("GAZEBO_RESOURCE_PATH")  
-        gz_plugins = self._get_env_var("GAZEBO_PLUGIN_PATH")
-        gz_models = self._get_env_var("GAZEBO_MODEL_PATH")
+        # Source the gazebo setup file to set up vars needed by the simuluator
+        self.update_env_variables(self.setup_file)
 
+        # This defines which network port gazebo will start on, we modify 
+        # this so we can start multiple instances
         os.environ["GAZEBO_MASTER_URI"] = "http://{}:{}".format(self.host, self.gz_port)
-        os.environ["GAZEBO_MODEL_DATABASE_URI"] = "http://gazebosim.org/models"
 
-        # FIXME Remove hardcoded paths and pull this from somewhere so its 
-        # cross platform
-        os.environ["GAZEBO_RESOURCE_PATH"] = "/usr/share/gazebo-8" + os.pathsep + gz_resource
-        os.environ["GAZEBO_PLUGIN_PATH"] = "/usr/lib/x86_64-linux-gnu/gazebo-8/plugins" + os.pathsep + gz_plugins
-        os.environ["GAZEBO_MODEL_PATH"] = "/usr/share/gazebo-8/models" + os.pathsep + gz_models
+        # Set up paths to our assets
+        # TODO need to load in the aircraft model from an independent location
+        # so we can decouple the digital twin from the environment
+        gz_assets_path = os.path.join(os.path.dirname(__file__), "assets/gazebo/")
+        model_path = os.path.join(gz_assets_path, "models")
+        plugin_path = os.path.join(gz_assets_path, "plugins", "build")
+        world_path = os.path.join(gz_assets_path, "worlds")
 
-        os.environ["LD_LIBRARY_PATH"] = "/usr/lib/x86_64-linux-gnu/gazebo-8/plugins" + os.pathsep + ld_library_path
-        os.environ["OGRE_RESOURCE_PATH"] = "/usr/lib/x86_64-linux-gnu/OGRE-1.9.0"
+        # Add the new paths
+        os.environ["GAZEBO_MODEL_PATH"] += os.pathsep + model_path
+        os.environ["GAZEBO_RESOURCE_PATH"] += os.pathsep + world_path
+        os.environ["GAZEBO_PLUGIN_PATH"] += os.pathsep + plugin_path
 
-        # Now load assets
-        gz_assets = os.path.join(os.path.dirname(__file__), "assets/gazebo/")
-        models = os.path.join(gz_assets, "models")
-        plugins = os.path.join(gz_assets, "plugins", "build")
-        worlds = os.path.join(gz_assets, "worlds")
-        os.environ["GAZEBO_MODEL_PATH"] = "{}:{}".format(models, os.environ["GAZEBO_MODEL_PATH"])
-        os.environ["GAZEBO_RESOURCE_PATH"] = "{}:{}".format(worlds, os.environ["GAZEBO_RESOURCE_PATH"])
-        os.environ["GAZEBO_PLUGIN_PATH"] = "{}:{}".format(plugins, os.environ["GAZEBO_PLUGIN_PATH"])
-
-        target_world = os.path.join(gz_assets, "worlds", self.world)
-        
+        target_world = os.path.join(gz_assets_path, "worlds", self.world)
         p = subprocess.Popen(["gzserver", "--verbose", target_world], shell=False) 
-        print ("Starting gzserver process with ID=", p.pid)
+        print ("Starting gzserver with process ID=", p.pid)
         self.pids.append(p.pid)
 
 
