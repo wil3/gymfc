@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from mpi4py import MPI
 import math
+import os
 
 """
 This script evaluates a PID controller in the GymFC environment. This can be
@@ -158,15 +159,6 @@ def eval(env, pi):
     env.close()
     return desireds, actuals
 
-def main(env_id, seed):
-    env = gym.make(env_id)
-    rank = MPI.COMM_WORLD.Get_rank()
-    workerseed = seed + 1000000 * rank
-    env.seed(workerseed)
-    pi = PIDPolicy()
-    desireds, actuals = eval(env, pi)
-    title = "PID Step Response in Environment {}".format(env_id)
-    plot_step_response(np.array(desireds), np.array(actuals), title=title)
 
 """
 This is essentially a port from Betaflight
@@ -433,13 +425,28 @@ class PID:
         """
         self.sample_time = sample_time
 
+def main(env_id, seed):
+    env = gym.make(env_id)
+    rank = MPI.COMM_WORLD.Get_rank()
+    workerseed = seed + 1000000 * rank
+    env.seed(workerseed)
+    pi = PIDPolicy()
+    desireds, actuals = eval(env, pi)
+    title = "PID Step Response in Environment {}".format(env_id)
+    plot_step_response(np.array(desireds), np.array(actuals), title=title)
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser("Evaluate a PID controller")
-    parser.add_argument('env', help="The Gym environement ID", type=str)
+    parser.add_argument('--env-id', help="The Gym environement ID", type=str,
+                        default="AttFC_GyroErr-MotorVel_M4_Ep-v0")
     parser.add_argument('--seed', help='RNG seed', type=int, default=17)
 
     args = parser.parse_args()
+    current_dir = os.path.dirname(__file__)
+    config_path = os.path.join(current_dir,
+                               "../configs/iris.config")
+    print ("Loading config from ", config_path)
+    os.environ["GYMFC_CONFIG"] = config_path
 
-    main(args.env, args.seed)
+    main(args.env_id, args.seed)

@@ -202,6 +202,7 @@ class GazeboEnv(gym.Env):
             self.setup_file = gz["SetupFile"]
             self.world = gz["World"]
             self.host = gz["Hostname"]
+            self.aircraft_model = gz["AircraftModel"]
             
             # Search for open ports to allow multile instances of the environment
             # to run in parrellel. Add a nonce to the start port to prevent any
@@ -352,15 +353,14 @@ class GazeboEnv(gym.Env):
         os.environ["GAZEBO_MASTER_URI"] = "http://{}:{}".format(self.host, self.gz_port)
 
         # Set up paths to our assets
-        # TODO need to load in the aircraft model from an independent location
-        # so we can decouple the digital twin from the environment
         gz_assets_path = os.path.join(os.path.dirname(__file__), "assets/gazebo/")
         model_path = os.path.join(gz_assets_path, "models")
         plugin_path = os.path.join(gz_assets_path, "plugins", "build")
         world_path = os.path.join(gz_assets_path, "worlds")
 
         # Add the new paths
-        os.environ["GAZEBO_MODEL_PATH"] += os.pathsep + model_path
+        os.environ["GAZEBO_MODEL_PATH"] += (os.pathsep + model_path + os.pathsep
+        + self.aircraft_model)
         os.environ["GAZEBO_RESOURCE_PATH"] += os.pathsep + world_path
         os.environ["GAZEBO_PLUGIN_PATH"] += os.pathsep + plugin_path
 
