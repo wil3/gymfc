@@ -18,8 +18,7 @@ Eprint = {arXiv:1804.04154},
 ```
 
 # Installation 
-Note, Ubuntu is the only OS currently supported primarily because controllers must be
-trained in headless mode on a server. I welcome any PRs and feedback for getting
+Note, Ubuntu is the only OS currently supported. I welcome any PRs and feedback for getting
 it installed on other OSs.   
 1. Download and install [Gazebo 8](http://gazebosim.org/download) (PRs welcome
    for Gazebo 9). Note the one-liner install script has been updated to install
@@ -27,12 +26,15 @@ Gazebo 9. Find the install script for Gazebo 8
 [here](https://bitbucket.org/osrf/release-tools/raw/49a91748d2ce8521b34178609de25cbd089442c2/one-line-installations/gazebo.sh).
 This is the recommended way to install the simulator. Tested on Ubuntu 16.04 LTS.
 2. From root directory of this project, `pip3 install -e .`
-3. Confirm environment is operating successfully by running an evaluation for
-   the
-   included PID controller tuned for the Iris quadcopter used in the environment
-and referenced paper,
+
+# Iris PID Example
+To verify you have installed the environment correctly it is recommended to run
+the supplied PID controller controlling an Iris quadcopter model. This example
+uses the configuration file `examples/config/iris.config`. Before running the
+example verify the properties, specifically that the Gazebo SetupFile exists.
+To run the example change directories to `examples/controllers` and execute,
 ```
-python3 -m gymfc.controllers.iris_pid_eval --env-id=AttFC_GyroErr-MotorVel_M4_Ep-v0
+python3 run_iris_pid.py
 ```
 If your environment is installed successfully you should observe a plot that
 closely resembles this step response,
@@ -41,6 +43,14 @@ Response](https://raw.githubusercontent.com/wil3/gymfc/master/images/pid-step-At
 
 
 # Development 
+
+GymFC's primary goal is to train controllers capable of flight in the real-world. 
+ In order to construct optimal flight controllers, the aircraft used in
+simulation should closely match the real-world aircraft. Therefore the GymFC environment is decoupled from the simulated aircraft.
+As previously mentioned, GymFC comes with an example to verify the environment.
+The Iris model can be useful for testing out new controllers. However when
+transferring the controller to run on a different aircraft, a new model will be
+required. Once the model is developed set the model directory to `AircraftModel` in your configuration file.
 
 It is recommended to run GymFC in headless mode (i.e. using `gzserver`) however
 during development and testing it may be desired to visually see the aircraft.  You can do this by using the `render` OpenAI gym API call which will also start `gzclient` along side `gzserver`. For example when creating the environment use,
