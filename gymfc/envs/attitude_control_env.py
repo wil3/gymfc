@@ -7,10 +7,8 @@ logger = logging.getLogger("gymfc")
 
 class AttitudeFlightControlEnv(GazeboEnv):
     def __init__(self, **kwargs): 
-        self.omega_bounds = kwargs["omega_bounds"]
         self.max_sim_time = kwargs["max_sim_time"]
-        self.motor_count = kwargs["motor_count"]
-        super(AttitudeFlightControlEnv, self).__init__(**kwargs)
+        super(AttitudeFlightControlEnv, self).__init__()
 
     def compute_reward(self):
         """ Compute the reward """
@@ -22,8 +20,8 @@ class AttitudeFlightControlEnv(GazeboEnv):
     
 class GyroErrorFeedbackEnv(AttitudeFlightControlEnv):
     def __init__(self, **kwargs): 
-        self.memory_size = memory_size
         self.observation_history = []
+        self.memory_size = kwargs["memory_size"]
         super(GyroErrorFeedbackEnv, self).__init__(**kwargs)
         self.omega_target = self.sample_target()
 
@@ -53,8 +51,8 @@ class GyroErrorFeedbackEnv(AttitudeFlightControlEnv):
 
 class GyroErrorESCVelocityFeedbackEnv(AttitudeFlightControlEnv):
     def __init__(self, **kwargs): 
-        self.memory_size = kwargs["memory_size"]
         self.observation_history = []
+        self.memory_size = kwargs["memory_size"]
         super(GyroErrorESCVelocityFeedbackEnv, self).__init__(**kwargs)
         self.omega_target = self.sample_target()
 
@@ -85,8 +83,8 @@ class GyroErrorESCVelocityFeedbackEnv(AttitudeFlightControlEnv):
 
 class GyroErrorESCVelocityFeedbackContinuousEnv(GyroErrorESCVelocityFeedbackEnv):
     def __init__(self, **kwargs): 
-        self.command_time_off = command_time_off
-        self.command_time_on = command_time_on
+        self.command_time_off = kwargs["command_time_off"]
+        self.command_time_on = kwargs["command_time_on"]
         self.command_off_time = None
         super(GyroErrorESCVelocityFeedbackContinuousEnv, self).__init__(**kwargs)
 
