@@ -14,6 +14,8 @@ import sys
 import xml.etree.ElementTree as ET
 import psutil
 import time
+import configparser
+import json
 logger = logging.getLogger("gymfc")
 
 class PWMPacket:
@@ -130,31 +132,17 @@ class ESCClientProtocol:
 
 class GazeboEnv(gym.Env):
     MAX_CONNECT_TRIES = 20
+    GYMFC_CONFIG_ENV_VAR = "GYMFC_CONFIG"
 
     def __init__(self, **kwargs):
-        """ Initialize the Gazebo simulation """
-        self.host = kwargs["hostname"]
-        self.world = kwargs["world"]
-        motor_count = kwargs["motor_count"]
-        self.setup_file = kwargs["setup_file"]
-        motor_mapping = kwargs["motor_mapping"]
-
-        # Init the seed variable
+        # Init the seed variable, user can override this
         self.seed()
 
-        # Search for open ports to allow multile instances of the environment
-        # to run in parrellel. Add a nonce to the start port to prevent any
-        # conflict of multiple instances usin the same ports during cleanup.
-        if kwargs["use_static_network_ports"]:
-            self.gz_port = kwargs["aircraft_start_port"]  
-            self.aircraft_port = kwargs["gazebo_start_port"]  
-        else:
-            self.gz_port = self._get_open_port(
-                self.np_random.randint(kwargs["gazebo_start_port"],kwargs["gazebo_end_port"])
-            )
-            self.aircraft_port = self._get_open_port(
-                self.np_random.randint(kwargs["aircraft_start_port"],kwargs["aircraft_end_port"])
-            )
+        try:
+            self.load_config()
+        except ConfigLoadException as e:
+            raise SystemExit(e)
+
 
         # Track process IDs so we can kill em
         self.pids = []
@@ -165,12 +153,12 @@ class GazeboEnv(gym.Env):
         self.last_sim_time = -self.stepsize
 
         # Set up the action/obs spaces
-        state = self.state()
-        high = np.array([1.0] * motor_count)
-        self.action_space = spaces.Box(-high, high, dtype=np.float32)
-        self.observation_space = spaces.Box(-np.inf, np.inf, shape=state.shape, dtype=np.float32) 
+        action_low = np.array([self.output_range[0]] * self.motor_count)
+        action_high = np.array([self.output_range[1]] * self.motor_count)
+        self.action_space = spaces.Box(action_low, action_high, dtype=np.float32)
 
-        self._start_sim()
+        state = self.state()
+        self.observation_space = spaces.Box(-np.inf, np.inf, shape=state.shape, dtype=np.float32) 
 
         # Set up some stats to report at the end, connection are over UDP
         # so it can be useful to see if anything is dropped
@@ -181,10 +169,70 @@ class GazeboEnv(gym.Env):
 
         # Connect to the Aircraft plugin
         writer = self.loop.create_datagram_endpoint(
-            lambda: ESCClientProtocol(motor_mapping),
+            lambda: ESCClientProtocol(self.motor_mapping),
             remote_addr=(self.host, self.aircraft_port))
         _, self.esc_protocol = self.loop.run_until_complete(writer) 
 
+        self._start_sim()
+
+    def load_config(self):
+        if self.GYMFC_CONFIG_ENV_VAR not in os.environ:
+            message = (
+                "Environment variable {} not set. " +
+                "Before running the environment please execute, " + 
+                "'export {}=path/to/config/file' " +
+                "or add the variable to your .bashrc."
+            ).format(self.GYMFC_CONFIG_ENV_VAR, self.GYMFC_CONFIG_ENV_VAR)
+            raise ConfigLoadException(message)
+
+        config_path = os.environ[self.GYMFC_CONFIG_ENV_VAR]
+        if not os.path.isfile(config_path):
+            message = "Config file '{}' does not exist.".format(config_path)
+            raise ConfigLoadException(message)
+
+        try:
+            config = configparser.ConfigParser()
+            config.read(config_path)
+            common = config["Common"]
+            gz = config["Gazebo"]
+            ac = config["Aircraft"]
+            train = config["Training"]
+
+            # Gazebo specific 
+            self.setup_file = gz["SetupFile"]
+            self.world = gz["World"]
+            self.host = gz["Hostname"]
+            
+            # Search for open ports to allow multile instances of the environment
+            # to run in parrellel. Add a nonce to the start port to prevent any
+            # conflict of multiple instances usin the same ports during cleanup.
+            if common.getboolean("UseFixedNetworkPort"):
+                self.gz_port =  gz.getint("NetworkPort")
+                self.aircraft_port = ac.getint("NetworkPort")
+            else:
+                self.gz_port = self._get_open_port(
+                    self.np_random.randint(
+                        *json.loads(gz["NetworkPort"]))
+                )
+                self.aircraft_port = self._get_open_port(
+                    self.np_random.randint(
+                        *json.loads(ac["NetworkPort"]))
+                )
+
+            # TODO Units
+            
+            # Training
+            self.omega_bounds = json.loads(train["TargetAngularVelocitySamplingRange"])
+
+            # Aircraft
+            self.motor_count = ac.getint("MotorCount")
+            self.motor_mapping = json.loads(ac["MotorMapping"])
+            self.output_range = json.loads(ac["ControlSignalOutputRange"])
+
+        except Exception as e: # Something went wong in the parser
+            raise ConfigLoadException(e)
+
+        
     def step_sim(self, action):
         """ Take a single step in the simulator and return the current 
         observations.
@@ -367,10 +415,9 @@ class GazeboEnv(gym.Env):
         print ("\n")
 
     def shutdown(self):
-        self.sim_stats["time_lapse_hours"] = (time.time() - self.sim_stats["time_start_seconds"])/60*60
+        self.sim_stats["time_lapse_hours"] = (time.time() - self.sim_stats["time_start_seconds"])/(60*60)
         self.print_post_simulation_stats()
         self.kill_sim()
-        #sys.exit(0)
 
     def reset(self):
         self.last_sim_time = -self.stepsize
@@ -401,5 +448,7 @@ class GazeboEnv(gym.Env):
 
 
 class SDFNoMaxStepSizeFoundException(Exception):
+    pass
+class ConfigLoadException(Exception):
     pass
 
