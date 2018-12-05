@@ -134,7 +134,7 @@ class GazeboEnv(gym.Env):
     MAX_CONNECT_TRIES = 20
     GYMFC_CONFIG_ENV_VAR = "GYMFC_CONFIG"
 
-    def __init__(self, **kwargs):
+    def __init__(self):
         # Init the seed variable, user can override this
         self.seed()
 
