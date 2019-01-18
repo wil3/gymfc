@@ -3,6 +3,7 @@
 **/.gazebo/*
 **/.sdformat/*
 **/.config/*
+**/build
 Makefile
 *.cmake
 CMakeCache.txt
