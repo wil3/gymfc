@@ -18,20 +18,21 @@ Eprint = {arXiv:1804.04154},
 ```
 
 # Installation 
-Note, Ubuntu is the only OS currently supported. I welcome any PRs and feedback for getting
-it installed on other OSs.   
-1. Download and install [Gazebo 8](http://gazebosim.org/download) (PRs welcome
-   for Gazebo 9). Note the one-liner install script has been updated to install
-Gazebo 9. Find the install script for Gazebo 8 is 
-[here](https://bitbucket.org/osrf/release-tools/raw/49a91748d2ce8521b34178609de25cbd089442c2/one-line-installations/gazebo.sh).
-This is the recommended way to install the simulator. Tested on Ubuntu 16.04 LTS.
-2. From root directory of this project, `pip3 install -e .`
+Note, Ubuntu is the only OS currently supported. Please submit a PR for the
+README.md if you are
+able to get it working on another platform.   
+1. Download and install [Gazebo 9](http://gazebosim.org/download). Tested on Ubuntu 16.04 LTS and 18.04 LTS.
+2. From root directory of this project, `pip3 install .`
 
 # Iris PID Example
 To verify you have installed the environment correctly it is recommended to run
 the supplied PID controller controlling an Iris quadcopter model. This example
 uses the configuration file `examples/config/iris.config`. Before running the
 example verify the configuration, specifically that the Gazebo `SetupFile` is pointing to the correct location.
+The example requires additional Python modules, from `examples` run,
+```
+pip3 install -r requirements.txt
+```
 To run the example change directories to `examples/controllers` and execute,
 ```
 python3 run_iris_pid.py
@@ -60,6 +61,10 @@ env.render()
 ```
 [![GymFC Visualization Demo](https://raw.githubusercontent.com/wil3/gymfc/master/images/gymfc-vis.png)](https://youtu.be/sX9NwmDg6SA)
 
+If you plan to work with the GymFC source code you will want to install it in
+development mode, `pip3 install -e .` from the root directory. You will also
+need to build the plugin manually by running the script
+`gymfc/envs/assets/gazebo/plugins/build_plugin.sh`. 
 # Environments
 
 Different environments are available depending on the capabilities of the flight
