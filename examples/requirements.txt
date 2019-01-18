@@ -1,0 +1,2 @@
+matplotlib
+mpi4py
