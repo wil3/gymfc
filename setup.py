@@ -17,23 +17,10 @@ class CustomBuild(DistutilsBuild):
             version_str = words[2]
             print ("Found cmake version ", version_str)
             version = list(map(int, version_str.split(".")))
-            # Last time I checked I believe this has to be version 3
-            return True
-        else:
-            return False
-
-    def get_virtualenv_path(self):
-        """Used to work out path to install compiled binaries to."""
-        if hasattr(sys, 'real_prefix'):
-            return sys.prefix
-
-        if hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix:
-            return sys.prefix
-
-        if 'conda' in sys.prefix:
-            return sys.prefix
-
-        return None
+            # According to the CMakeList this needs to be >=2.6
+            if ((version[0] == 2 and version[1] >= 6) or version[0] >= 3):
+                return True
+        return False
 
     def build_plugin(self):
 
@@ -42,7 +29,6 @@ class CustomBuild(DistutilsBuild):
         build_plugin_script = "./build_plugin.sh"
         p = subprocess.call([build_plugin_script], cwd=plugin_dir, shell=True) 
         print ("Done building plugin")
-        
 
     def run(self):
         if self.check_cmake_installed():
@@ -50,7 +36,7 @@ class CustomBuild(DistutilsBuild):
             self.build_plugin()
             DistutilsBuild.run(self)
         else:
-            raise Exception("Cannot find cmake.")
+            raise Exception("Cannot find valid cmake installation, required version >= 2.6.")
 
 setup(name='gymfc',
       version='0.1.2',
