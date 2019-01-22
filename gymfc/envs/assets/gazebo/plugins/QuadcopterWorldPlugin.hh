@@ -68,38 +68,6 @@ struct fdmPacket
   
 //  unsigned int seq;
 };
-  class Rotor
- {
-	 public: Rotor();
-
-	  /// \brief rotor id
-	  public: int id = 0;
-
-	  /// \brief Max rotor propeller RPM.
-	  public: double maxRpm = 838.0;
-
-	  /// \brief Next command to be applied to the propeller
-	  public: double cmd = 0;
-
-	  /// \brief Velocity PID for motor control
-	  public: common::PID pid;
-
-	  /// \brief Control propeller joint.
-	  public: std::string jointName;
-
-	  /// \brief Control propeller joint.
-	  public: physics::JointPtr joint;
-
-	  /// \brief direction multiplier for this rotor
-	  public: double multiplier = 1;
-
-	  /// \brief unused coefficients
-	  public: double rotorVelocitySlowdownSim = 10.0;
-	  public: double frequencyCutoff = 5.0;
-	  public: double samplingRate = 0.2;
-	  public: ignition::math::OnePole<double> velocityFilter;
-
- };
   class QuadcopterWorldPlugin : public WorldPlugin
   {
     /// \brief Constructor.
@@ -118,12 +86,6 @@ struct fdmPacket
 	public: bool Bind(const char *_address, const uint16_t _port);
     public: void MakeSockAddr(const char *_address, const uint16_t _port, struct sockaddr_in &_sockaddr);
   	public: ssize_t Recv(void *_buf, const size_t _size, uint32_t _timeoutMs);
-    /// \brief Update PID Joint controllers.
-    /// \param[in] _dt time step size since last update.
-    private: void ApplyMotorForces(const double _dt);
-
-    /// \brief Reset PID Joint controllers.
-    private: void ResetPIDs();
 
     /// \brief Receive motor commands from Quadcopter
     private: bool ReceiveMotorCommand();
@@ -151,9 +113,6 @@ struct fdmPacket
 	/// \brief Pointer to the update event connection.
 	public: event::ConnectionPtr updateConnection;
 
-	/// \brief array of propellers
-	public: std::vector<Rotor> rotors;
-
 	/// \brief keep track of controller update sim-time.
 	public: gazebo::common::Time lastControllerUpdateTime;
 
@@ -166,9 +125,6 @@ struct fdmPacket
 	public: struct sockaddr_in remaddr;
 
 	public: socklen_t remaddrlen;
-
-	/// \brief Pointer to an IMU sensor
-	public: sensors::ImuSensorPtr imuSensor;
 
 	/// \brief True if world should be reset
 	public: bool resetWorld;

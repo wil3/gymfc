@@ -133,162 +133,18 @@ void QuadcopterWorldPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf)
   this->_world = _world;
   this->processSDF(_sdf);
 
-  const	std::string modelName = "testbench";
   // Force pause because we drive the simulation steps
   this->_world->SetPaused(TRUE);
 
   // Controller time control.
   this->lastControllerUpdateTime = 0;
 
-  gzlog << "Quadcopter ready to fly. The force will be with you" << "\n";
   _callback_loop_thread = boost::thread( boost::bind( &QuadcopterWorldPlugin::loop_thread,this ) );
 }
 
 void QuadcopterWorldPlugin::processSDF(sdf::ElementPtr _sdf)
 {
-  // Get model name
-  std::string modelName;
-  getSdfParam<std::string>(_sdf, "modelName", modelName, "");
-  this->_model = this->_world->ModelByName(modelName);
-  //TODO Better error handling
-  if (!this->_model){
-	  gzerr << "Cant find model " << modelName << ". Aborting plugin.\n";
-	  return;
-  }
 
-  // per rotor
-  if (_sdf->HasElement("rotor"))
-  {
-    sdf::ElementPtr rotorSDF = _sdf->GetElement("rotor");
-
-    while (rotorSDF)
-    {
-      Rotor rotor;
-      if (rotorSDF->HasAttribute("id"))
-      {
-        rotor.id = rotorSDF->GetAttribute("id")->Get(rotor.id);
-      }
-      else
-      {
-        rotor.id = this->rotors.size();
-        gzwarn << "id attribute not specified, use order parsed ["
-               << rotor.id << "].\n";
-      }
-
-      if (rotorSDF->HasElement("jointName"))
-      {
-        rotor.jointName = rotorSDF->Get<std::string>("jointName");
-      }
-      else
-      {
-        gzerr << "Please specify a jointName,"
-          << " where the rotor is attached.\n";
-      }
-
-      // Get the pointer to the joint.
-      rotor.joint = this->_model->GetJoint(rotor.jointName);
-      if (rotor.joint == nullptr)
-      {
-        gzerr << "Couldn't find specified joint ["
-            << rotor.jointName << "]. This plugin will not run.\n";
-        return;
-      }
-
-      if (rotorSDF->HasElement("turningDirection"))
-      {
-        std::string turningDirection = rotorSDF->Get<std::string>(
-            "turningDirection");
-        // special cases mimic from rotors_gazebo_plugins
-        if (turningDirection == "cw")
-          rotor.multiplier = -1;
-        else if (turningDirection == "ccw")
-          rotor.multiplier = 1;
-        else
-        {
-          gzdbg << "not string, check turningDirection as float\n";
-          rotor.multiplier = rotorSDF->Get<double>("turningDirection");
-        }
-      }
-      else
-      {
-        rotor.multiplier = 1;
-        gzerr << "Please specify a turning"
-          << " direction multiplier ('cw' or 'ccw'). Default 'ccw'.\n";
-      }
-
-      getSdfParam<double>(rotorSDF, "rotorVelocitySlowdownSim",
-          rotor.rotorVelocitySlowdownSim, 1);
-
-      if (ignition::math::equal(rotor.rotorVelocitySlowdownSim, 0.0))
-      {
-        gzerr << "rotor for joint [" << rotor.jointName
-              << "] rotorVelocitySlowdownSim is zero,"
-              << " aborting plugin.\n";
-        return;
-      }
-
-      getSdfParam<double>(rotorSDF, "frequencyCutoff",
-          rotor.frequencyCutoff, rotor.frequencyCutoff);
-      getSdfParam<double>(rotorSDF, "samplingRate",
-          rotor.samplingRate, rotor.samplingRate);
-
-      // use ignition::math::Filter
-      rotor.velocityFilter.Fc(rotor.frequencyCutoff, rotor.samplingRate);
-
-      // initialize filter to zero value
-      rotor.velocityFilter.Set(0.0);
-
-      // note to use this
-      // rotorVelocityFiltered = velocityFilter.Process(rotorVelocityRaw);
-
-      // Overload the PID parameters if they are available.
-      double param;
-      getSdfParam<double>(rotorSDF, "vel_p_gain", param, rotor.pid.GetPGain());
-      rotor.pid.SetPGain(param);
-
-      getSdfParam<double>(rotorSDF, "vel_i_gain", param, rotor.pid.GetIGain());
-      rotor.pid.SetIGain(param);
-
-      getSdfParam<double>(rotorSDF, "vel_d_gain", param,  rotor.pid.GetDGain());
-      rotor.pid.SetDGain(param);
-
-      getSdfParam<double>(rotorSDF, "vel_i_max", param, rotor.pid.GetIMax());
-      rotor.pid.SetIMax(param);
-
-      getSdfParam<double>(rotorSDF, "vel_i_min", param, rotor.pid.GetIMin());
-      rotor.pid.SetIMin(param);
-
-      getSdfParam<double>(rotorSDF, "vel_cmd_max", param,
-          rotor.pid.GetCmdMax());
-      rotor.pid.SetCmdMax(param);
-
-      getSdfParam<double>(rotorSDF, "vel_cmd_min", param,
-          rotor.pid.GetCmdMin());
-      rotor.pid.SetCmdMin(param);
-
-      // set pid initial command
-      rotor.pid.SetCmd(0.0);
-
-      this->rotors.push_back(rotor);
-      rotorSDF = rotorSDF->GetNextElement("rotor");
-    }
-  }
-
-  // Get sensors
-  std::string imuName;
-  getSdfParam<std::string>(_sdf, "imuName", imuName, "imu_sensor");
-  std::string imuScopedName = this->_world->Name()
-      + "::" + this->_model->GetScopedName()
-      + "::" + imuName;
-  this->imuSensor = std::dynamic_pointer_cast<sensors::ImuSensor>
-    (sensors::SensorManager::Instance()->GetSensor(imuScopedName));
-
-  if (!this->imuSensor)
-  {
-    gzerr << "imu_sensor [" << imuScopedName
-          << "] not found, abort Quadcopter plugin.\n" << "\n";
-    return;
-  }
   // Missed update count before we declare arduCopterOnline status false
   getSdfParam<int>(_sdf, "connectionTimeoutMaxCount",
     this->connectionTimeoutMaxCount, 10);
@@ -464,32 +320,7 @@ bool QuadcopterWorldPlugin::Bind(const char *_address, const uint16_t _port)
 	return recvlen;
     #endif
   }
-/////////////////////////////////////////////////
-void QuadcopterWorldPlugin::ResetPIDs()
-{
-  // Reset velocity PID for rotors
-  for (size_t i = 0; i < this->rotors.size(); ++i)
-  {
-    this->rotors[i].cmd = 0;
-    // this->rotors[i].pid.Reset();
-  }
-}
 
-/////////////////////////////////////////////////
-void QuadcopterWorldPlugin::ApplyMotorForces(const double _dt)
-{
-  // update velocity PID for rotors and apply force to joint
-  for (size_t i = 0; i < this->rotors.size(); ++i)
-  {
-    double velTarget = this->rotors[i].multiplier *
-      this->rotors[i].cmd /
-      this->rotors[i].rotorVelocitySlowdownSim;
-    double vel = this->rotors[i].joint->GetVelocity(0);
-    double error = vel - velTarget;
-    double force = this->rotors[i].pid.Update(error, _dt);
-    this->rotors[i].joint->SetForce(0, force);
-  }
-}
 
 /////////////////////////////////////////////////
 bool QuadcopterWorldPlugin::ReceiveMotorCommand()
@@ -596,139 +427,17 @@ void QuadcopterWorldPlugin::SendState(bool motorCommandProcessed) const
 
   pkt.timestamp = this->_world->SimTime().Double();
 
-  for (size_t i = 0; i < this->rotors.size(); ++i)
-  {
-    pkt.motorVelocity[i] = this->rotors[i].joint->GetVelocity(0);
-  }
-  // asssumed that the imu orientation is:
-  //   x forward
-  //   y right
-  //   z down
-
-  // get linear acceleration in body frame
-  ignition::math::Vector3d linearAccel =
-    this->imuSensor->LinearAcceleration();
-
-  // copy to pkt
-  pkt.imuLinearAccelerationXYZ[0] = linearAccel.X();
-  pkt.imuLinearAccelerationXYZ[1] = linearAccel.Y();
-  pkt.imuLinearAccelerationXYZ[2] = linearAccel.Z();
-  // gzerr << "lin accel [" << linearAccel << "]\n";
-
-  // get angular velocity in body frame
-  ignition::math::Vector3d angularVel =
-    this->imuSensor->AngularVelocity();
-
-  // copy to pkt
-  pkt.imuAngularVelocityRPY[0] = angularVel.X();
-  pkt.imuAngularVelocityRPY[1] = angularVel.Y();
-  pkt.imuAngularVelocityRPY[2] = angularVel.Z();
-
- //if (pkt.iter == 0){
-  //}
-
-
-  // get inertial pose and velocity
-  // position of the quadrotor in world frame
-  // this position is used to calcualte bearing and distance
-  // from starting location, then use that to update gps position.
-  // The algorithm looks something like below (from ardupilot helper
-  // libraries):
-  //   bearing = to_degrees(atan2(position.y, position.x));
-  //   distance = math.sqrt(self.position.x**2 + self.position.y**2)
-  //   (self.latitude, self.longitude) = util.gps_newpos(
-  //    self.home_latitude, self.home_longitude, bearing, distance)
-  // where xyz is in the NED directions.
-  // Gazebo world xyz is assumed to be N, -E, -D, so flip some stuff
-  // around.
-  // orientation of the quadrotor in world NED frame -
-  // assuming the world NED frame has xyz mapped to NED,
-  // imuLink is NED - z down
-
-  // gazeboToNED brings us from gazebo model: x-forward, y-right, z-down
-  // to the aerospace convention: x-forward, y-left, z-up
-  ignition::math::Pose3d gazeboToNED(0, 0, 0, IGN_PI, 0, 0);
-
-  // model world pose brings us to model, x-forward, y-left, z-up
-  // adding gazeboToNED gets us to the x-forward, y-right, z-down
-  ignition::math::Pose3d worldToModel = gazeboToNED +
-    this->_model->WorldPose();
-
-  // get transform from world NED to Model frame
-  ignition::math::Pose3d NEDToModel = worldToModel - gazeboToNED;
-
-  // gzerr << "ned to model [" << NEDToModel << "]\n";
-
-  // N
-  pkt.positionXYZ[0] = NEDToModel.Pos().X();
-
-  // E
-  pkt.positionXYZ[1] = NEDToModel.Pos().Y();
-
-  // D
-  pkt.positionXYZ[2] = NEDToModel.Pos().Z();
-
-  // imuOrientationQuat is the rotation from world NED frame
-  // to the quadrotor frame.
-  pkt.imuOrientationQuat[0] = NEDToModel.Rot().W();
-  pkt.imuOrientationQuat[1] = NEDToModel.Rot().X();
-  pkt.imuOrientationQuat[2] = NEDToModel.Rot().Y();
-  pkt.imuOrientationQuat[3] = NEDToModel.Rot().Z();
-
-  // gzdbg << "imu [" << worldToModel.rot.GetAsEuler() << "]\n";
-  // gzdbg << "ned [" << gazeboToNED.rot.GetAsEuler() << "]\n";
-  // gzdbg << "rot [" << NEDToModel.rot.GetAsEuler() << "]\n";
-
-  // Get NED velocity in body frame *
-  // or...
-  // Get model velocity in NED frame
-  ignition::math::Vector3d velGazeboWorldFrame =
-    this->_model->GetLink()->WorldLinearVel();
-  ignition::math::Vector3d velNEDFrame =
-    gazeboToNED.Rot().RotateVectorReverse(velGazeboWorldFrame);
-  pkt.velocityXYZ[0] = velNEDFrame.X();
-  pkt.velocityXYZ[1] = velNEDFrame.Y();
-  pkt.velocityXYZ[2] = velNEDFrame.Z();
-
   if (motorCommandProcessed){
 	  pkt.status_code = 1;
   } else {
 	  pkt.status_code = 0;
   }
 
-  /*  
-  char b[sizeof(pkt)];
-  memcpy(b, &pkt, sizeof(pkt));
-
-
-  gzdbg << " size of pkt " << sizeof(pkt) << "\n";
-  ::sendto(this->handle,
-		  b,
-           sizeof(pkt), 0,
-		   (struct sockaddr *)&this->remaddr, this->remaddrlen); 
-
-  //struct sockaddr_in sockaddr;
-  //this->MakeSockAddr("127.0.0.1", 9003, sockaddr);
-  */
   ::sendto(this->handle,
            reinterpret_cast<raw_type *>(&pkt),
            sizeof(pkt), 0,
 		   (struct sockaddr *)&this->remaddr, this->remaddrlen); 
    //        (struct sockaddr *)&sockaddr, sizeof(sockaddr));
-}
-
-  /// \brief Constructor
-Rotor::Rotor()
-{
-    // most of these coefficients are not used yet.
-	/*
-    this->rotorVelocitySlowdownSim = this->kDefaultRotorVelocitySlowdownSim;
-    this->frequencyCutoff = this->kDefaultFrequencyCutoff;
-    this->samplingRate = this->kDefaultSamplingRate;
-	*/
-	
-	// P, I, D, Imin, Imax, cmdMax, cmdMin
-    this->pid.Init(0.1, 0, 0, 0, 0, 1.0, -1.0);
 }
 
 
