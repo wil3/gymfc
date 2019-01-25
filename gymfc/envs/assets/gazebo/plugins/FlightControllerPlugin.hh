@@ -94,6 +94,14 @@ struct fdmPacket
     private: void SendState(bool motorCommandProcessed) const;
 	private: void softReset();
 
+    /* Now define the communication channels with the digital twin
+     * The architecure treats this world plugin as the flight controller
+     * while all other aircraft components are now external and communicated
+     * over protobufs
+     */
+    private: transport::PublisherPtr cmdPub;
+    private: transport::SubscriberPtr sensorSub;
+
 	private: boost::thread _callback_loop_thread;
 
 	/// \brief How fast in Hertz the inner loop runs
@@ -130,7 +138,7 @@ struct fdmPacket
 	public: bool resetWorld;
 	/// \brief false before ardupilot controller is online
 	/// to allow gazebo to continue without waiting
-	public: bool arduCopterOnline;
+	public: bool aircraftOnline;
 
 	/// \brief number of times ArduCotper skips update
 	public: int connectionTimeoutCount;
