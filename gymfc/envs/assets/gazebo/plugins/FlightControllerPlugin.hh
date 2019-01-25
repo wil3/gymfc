@@ -25,18 +25,23 @@
 #include <gazebo/sensors/sensors.hh>
 
 #include <gazebo/physics/Base.hh>
+#include "gazebo/transport/transport.hh"
+
+#include "CommandMotorSpeed.pb.h"
 
 #define MAX_MOTORS 255
 
 namespace gazebo
 {
+  static const std::string kDefaultCmdPubTopic = "/gazebo/command/motor_speed";
+
 /// \brief A servo packet.
 struct ServoPacket
 {
 	/// \brief Flag to indicate the world should be reset
 	int resetWorld;
-	/// \brief Motor speed data.
-	float motorSpeed[MAX_MOTORS];
+	/// \brief Motor control signal [0,1].
+	float motor[MAX_MOTORS];
 
 };
 
@@ -68,41 +73,35 @@ struct fdmPacket
   
 //  unsigned int seq;
 };
-  class QuadcopterWorldPlugin : public WorldPlugin
-  {
-    /// \brief Constructor.
-    public: QuadcopterWorldPlugin();
+class FlightControllerPlugin : public WorldPlugin
+{
+  /// \brief Constructor.
+  public: FlightControllerPlugin();
 
-    /// \brief Destructor.
-    public: ~QuadcopterWorldPlugin();
+  /// \brief Destructor.
+  public: ~FlightControllerPlugin();
 
-    // Documentation Inherited.
-    public: void Load(physics::WorldPtr _world, sdf::ElementPtr _sdf);
-	public: void processSDF(sdf::ElementPtr _sdf);
+  // The function called when the plugin in loaded 
+  public: void Load(physics::WorldPtr _world, sdf::ElementPtr _sdf);
+	public: void ProcessSDF(sdf::ElementPtr _sdf);
 
-	public: void loop_thread();
+	public: void LoopThread();
 	
 
 	public: bool Bind(const char *_address, const uint16_t _port);
-    public: void MakeSockAddr(const char *_address, const uint16_t _port, struct sockaddr_in &_sockaddr);
-  	public: ssize_t Recv(void *_buf, const size_t _size, uint32_t _timeoutMs);
+  public: void MakeSockAddr(const char *_address, const uint16_t _port, struct sockaddr_in &_sockaddr);
+  public: ssize_t Recv(void *_buf, const size_t _size, uint32_t _timeoutMs);
 
-    /// \brief Receive motor commands from Quadcopter
-    private: bool ReceiveMotorCommand();
+  /// \brief Receive motor commands from Quadcopter
+  private: bool ReceiveMotorCommand();
 
-    /// \brief Send state to Quadcopter
-    private: void SendState(bool motorCommandProcessed) const;
-	private: void softReset();
+  /// \brief Send state to Quadcopter
+  private: void SendState(bool motorCommandProcessed) const;
+	private: void SoftReset();
 
-    /* Now define the communication channels with the digital twin
-     * The architecure treats this world plugin as the flight controller
-     * while all other aircraft components are now external and communicated
-     * over protobufs
-     */
-    private: transport::PublisherPtr cmdPub;
-    private: transport::SubscriberPtr sensorSub;
+  private: std::string robotNamespace;
 
-	private: boost::thread _callback_loop_thread;
+	private: boost::thread callbackLoopThread;
 
 	/// \brief How fast in Hertz the inner loop runs
 	private: double loopRate;
@@ -114,10 +113,8 @@ struct fdmPacket
 	private: ignition::math::Vector2d yawLimit;
 
 
-	public: physics::WorldPtr _world;
+	public: physics::WorldPtr world;
 	
-	public: physics::ModelPtr _model;
-
 	/// \brief Pointer to the update event connection.
 	public: event::ConnectionPtr updateConnection;
 
@@ -140,12 +137,26 @@ struct fdmPacket
 	/// to allow gazebo to continue without waiting
 	public: bool aircraftOnline;
 
+  private: int numActuators;
+
 	/// \brief number of times ArduCotper skips update
 	public: int connectionTimeoutCount;
 
 	/// \brief number of times ArduCotper skips update
 	/// before marking Quadcopter offline
 	public: int connectionTimeoutMaxCount;
+
+  private: std::string cmdPubTopic;
+  private: transport::NodePtr nodeHandle;
+  // Now define the communication channels with the digital twin
+  // The architecure treats this world plugin as the flight controller
+  // while all other aircraft components are now external and communicated
+  // over protobufs
+  private: transport::PublisherPtr cmdPub;
+
+   // Subscribe to all possible sensors
+  private: transport::SubscriberPtr sensorSub;
+  private: cmd_msgs::msgs::CommandMotorSpeed cmdMsg;
   };
 }
 #endif

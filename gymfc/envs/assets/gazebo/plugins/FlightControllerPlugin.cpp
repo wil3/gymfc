@@ -50,8 +50,9 @@ typedef SSIZE_T ssize_t;
 #include <gazebo/transport/transport.hh>
 #include <gazebo/physics/Base.hh>
 
-#include "QuadcopterWorldPlugin.hh"
+#include "FlightControllerPlugin.hh"
 
+#include "CommandMotorSpeed.pb.h"
 
 using namespace gazebo;
 /// \brief Obtains a parameter from sdf.
@@ -74,15 +75,15 @@ bool getSdfParam(sdf::ElementPtr _sdf, const std::string &_name,
   _param = _defaultValue;
   if (_verbose)
   {
-    gzerr << "[QuadcopterWorldPlugin] Please specify a value for parameter ["
+    gzerr << "[FlightControllerPlugin] Please specify a value for parameter ["
       << _name << "].\n";
   }
   return false;
 }
 
-GZ_REGISTER_WORLD_PLUGIN(QuadcopterWorldPlugin)
+GZ_REGISTER_WORLD_PLUGIN(FlightControllerPlugin)
 
-QuadcopterWorldPlugin::QuadcopterWorldPlugin() 
+FlightControllerPlugin::FlightControllerPlugin() 
 {
   // socket
   this->handle = socket(AF_INET, SOCK_DGRAM /*SOCK_STREAM*/, 0);
@@ -94,6 +95,8 @@ QuadcopterWorldPlugin::QuadcopterWorldPlugin()
   setsockopt(this->handle, IPPROTO_TCP, TCP_NODELAY,
       reinterpret_cast<const char *>(&one), sizeof(one));
 
+  // Default port can be read in from an environment variable
+  // This allows multiple instances to be run
   int port = 9002;
   if(const char* env_p =  std::getenv("SITL_PORT")){
 		  port = std::stoi(env_p);
@@ -105,7 +108,7 @@ QuadcopterWorldPlugin::QuadcopterWorldPlugin()
     return;
   }
 
-  this->arduCopterOnline = false;
+  this->aircraftOnline = false;
 
   this->connectionTimeoutCount = 0;
 
@@ -122,73 +125,74 @@ QuadcopterWorldPlugin::QuadcopterWorldPlugin()
   #endif
 
 }
-QuadcopterWorldPlugin::~QuadcopterWorldPlugin()
+FlightControllerPlugin::~FlightControllerPlugin()
 {
+    // Tear down the transporter
+    gazebo::transport::fini();
+
 	  // Sleeps (pauses the destructor) until the thread has finished
-	  _callback_loop_thread.join();
+	  this->callbackLoopThread.join();
 }
-void QuadcopterWorldPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf)
+
+
+void FlightControllerPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf)
 {
 
-  this->_world = _world;
-  this->processSDF(_sdf);
+  this->world = _world;
+  this->ProcessSDF(_sdf);
+
+
+  this->nodeHandle = transport::NodePtr(new transport::Node());
+  this->nodeHandle->Init(this->robotNamespace);
+
+  this->cmdPub = this->nodeHandle->Advertise<cmd_msgs::msgs::CommandMotorSpeed>(this->cmdPubTopic);
 
   // Force pause because we drive the simulation steps
-  this->_world->SetPaused(TRUE);
+  this->world->SetPaused(TRUE);
 
   // Controller time control.
   this->lastControllerUpdateTime = 0;
 
-  _callback_loop_thread = boost::thread( boost::bind( &QuadcopterWorldPlugin::loop_thread,this ) );
+  this->callbackLoopThread = boost::thread( boost::bind( &FlightControllerPlugin::LoopThread, this) );
 }
 
-void QuadcopterWorldPlugin::processSDF(sdf::ElementPtr _sdf)
+void FlightControllerPlugin::ProcessSDF(sdf::ElementPtr _sdf)
 {
+  this->cmdPubTopic = kDefaultCmdPubTopic;
+  if (_sdf->HasElement("commandPubTopic")){
+      this->cmdPubTopic = _sdf->GetElement("commandPubTopic")->Get<std::string>();
+  }
 
-  // Missed update count before we declare arduCopterOnline status false
+  if (_sdf->HasElement("robotNamespace"))
+    this->robotNamespace = _sdf->GetElement("robotNamespace")->Get<std::string>();
+  else
+    gzerr << "[gazebo_motor_model] Please specify a robotNamespace.\n";
+
+  // Missed update count before we declare aircraftOnline status false
   getSdfParam<int>(_sdf, "connectionTimeoutMaxCount",
     this->connectionTimeoutMaxCount, 10);
   getSdfParam<double>(_sdf, "loopRate",
     this->loopRate, 100);
 
-  // Optional parameters to start the aircraft off in a spin
-  this->resetWithRandomAngularVelocity = FALSE;
-  if (_sdf->HasElement("resetState"))
-  {
-		sdf::ElementPtr resetStateSDF = _sdf->GetElement("resetState");
-		if (resetStateSDF->HasElement("angularVelocity")){
-			sdf::ElementPtr angularVelocitySDF = resetStateSDF->GetElement("angularVelocity");
-			if (angularVelocitySDF->HasElement("random")){
-				sdf::ElementPtr randomSDF = angularVelocitySDF->GetElement("random");
-				if (randomSDF->HasElement("seed")){
-						this->resetWithRandomAngularVelocity = TRUE;
-						ignition::math::Rand::Seed(randomSDF->Get<int>("seed"));
-						this->rollLimit = randomSDF->Get<ignition::math::Vector2d>("roll");
-						this->pitchLimit = randomSDF->Get<ignition::math::Vector2d>("pitch");
-						this->yawLimit = randomSDF->Get<ignition::math::Vector2d>("yaw");
-				}
-			}
-		}
-  } 
 }
 
-void QuadcopterWorldPlugin::softReset(){
-    this->_world->ResetTime();
-    this->_world->ResetEntities(gazebo::physics::Base::BASE);
-	this->_world->ResetPhysicsStates();
+void FlightControllerPlugin::SoftReset(){
+  this->world->ResetTime();
+  this->world->ResetEntities(gazebo::physics::Base::BASE);
+	this->world->ResetPhysicsStates();
 }
 
-void QuadcopterWorldPlugin::loop_thread()
+void FlightControllerPlugin::LoopThread()
 {
 	double msPeriod = 1000.0/this->loopRate;
-    this->resetWorld = FALSE;
+  this->resetWorld = FALSE;
 	while (1){
 
 		std::lock_guard<std::mutex> lock(this->mutex);
 
 		boost::this_thread::sleep(boost::posix_time::milliseconds(msPeriod));
 
-		gazebo::common::Time curTime = _world->SimTime();
+		gazebo::common::Time curTime = this->world->SimTime();
 		
 		//Try reading from the socket, if a packet is
 		//available update the rotors
@@ -198,19 +202,20 @@ void QuadcopterWorldPlugin::loop_thread()
 			if (this->resetWorld)
 			{
 				// Cant do a full reset of the RNG gets reset as well
-				this->softReset();
+				this->SoftReset();
 				double error = 0.0001;// About 0.006 deg/s
 				double spR = 0.0;
 				double spP = 0.0;
 				double spY = 0.0;
 				//Flush stale IMU values
+        /*
 				while (1)
 				{
   						ignition::math::Vector3d rates = this->imuSensor->AngularVelocity();
 						// Pitch and Yaw are negative
 						if (std::abs(spR - rates.X()) > error || std::abs(spP + rates.Y()) > error || std::abs(spY + rates.Z()) > error){
 							//gzdbg << "Gyro r=" << rates.X() << " p=" << rates.Y() << " y=" << rates.Z() << "\n";
-							this->_world->Step(1);
+							this->world->Step(1);
 							if (!this->resetWithRandomAngularVelocity){//Only reset if trying to get to 0 rate 
 								this->softReset();
 							} 
@@ -219,27 +224,29 @@ void QuadcopterWorldPlugin::loop_thread()
 							  //gzdbg << "Target velocity reached! r=" << rates.X() << " p=" << rates.Y() << " y=" << rates.Z() << "\n";
 							break;
 						}
-				}
+				}*/
 
 				
-  				if (this->_world->SimTime().Double() != 0.0){
-					gzerr << "Reset sent but clock did not reset, at " << this->_world->SimTime().Double() << "\n";
+  				if (this->world->SimTime().Double() != 0.0){
+					gzerr << "Reset sent but clock did not reset, at " << this->world->SimTime().Double() << "\n";
 				}
 			}
 
-			if (this->arduCopterOnline)
+			if (this->aircraftOnline)
 			{
-				this->ApplyMotorForces((curTime - this->lastControllerUpdateTime).Double());
+          //pkt.motorSpeed[i];
+        //cmd_msgs::CommandMotorSpeed cmd;
+				//this->cmdPub->Publish(cmd);
 			}
 			this->lastControllerUpdateTime = curTime;
 			if (!this->resetWorld)
 			{
-				this->_world->Step(1);
+				this->world->Step(1);
 			}
 		} else {
 			//gzerr << "Command not received t=" << this->_world->SimTime().Double() << "\n";
 		}	
-		if (this->arduCopterOnline)
+		if (this->aircraftOnline)
 		{
 			this->SendState(received);
 		}
@@ -251,7 +258,7 @@ void QuadcopterWorldPlugin::loop_thread()
   /// \param[in] _address Address to bind to.
   /// \param[in] _port Port to bind to.
   /// \return True on success.
-bool QuadcopterWorldPlugin::Bind(const char *_address, const uint16_t _port)
+bool FlightControllerPlugin::Bind(const char *_address, const uint16_t _port)
   {
     struct sockaddr_in sockaddr;
     this->MakeSockAddr(_address, _port, sockaddr);
@@ -273,7 +280,7 @@ bool QuadcopterWorldPlugin::Bind(const char *_address, const uint16_t _port)
   /// \param[in] _address Socket address.
   /// \param[in] _port Socket port
   /// \param[out] _sockaddr New socket address structure.
-  void QuadcopterWorldPlugin::MakeSockAddr(const char *_address, const uint16_t _port,
+  void FlightControllerPlugin::MakeSockAddr(const char *_address, const uint16_t _port,
     struct sockaddr_in &_sockaddr)
   {
     memset(&_sockaddr, 0, sizeof(_sockaddr));
@@ -291,7 +298,7 @@ bool QuadcopterWorldPlugin::Bind(const char *_address, const uint16_t _port)
   /// \param[out] _buf Buffer that receives the data.
   /// \param[in] _size Size of the buffer.
   /// \param[in] _timeoutMS Milliseconds to wait for data.
-  ssize_t QuadcopterWorldPlugin::Recv(void *_buf, const size_t _size, uint32_t _timeoutMs)
+  ssize_t FlightControllerPlugin::Recv(void *_buf, const size_t _size, uint32_t _timeoutMs)
   {
     fd_set fds;
     struct timeval tv;
@@ -323,7 +330,7 @@ bool QuadcopterWorldPlugin::Bind(const char *_address, const uint16_t _port)
 
 
 /////////////////////////////////////////////////
-bool QuadcopterWorldPlugin::ReceiveMotorCommand()
+bool FlightControllerPlugin::ReceiveMotorCommand()
 {
   // Added detection for whether ArduCopter is online or not.
   // If ArduCopter is detected (receive of fdm packet from someone),
@@ -337,7 +344,7 @@ bool QuadcopterWorldPlugin::ReceiveMotorCommand()
   bool commandProcessed = FALSE;
   ServoPacket pkt;
   int waitMs = 1;
-  if (this->arduCopterOnline)
+  if (this->aircraftOnline)
   {
     // increase timeout for receive once we detect a packet from
     // ArduCopter FCS.
@@ -350,7 +357,7 @@ bool QuadcopterWorldPlugin::ReceiveMotorCommand()
   }
   ssize_t recvSize = this->Recv(&pkt, sizeof(ServoPacket), waitMs);
   ssize_t expectedPktSize =
-    sizeof(pkt.motorSpeed[0])*this->rotors.size()  + sizeof(pkt.resetWorld);
+    sizeof(pkt.motor[0])*this->numActuators  + sizeof(pkt.resetWorld);
   if ((recvSize == -1) || (recvSize < expectedPktSize))
   {
     // didn't receive a packet
@@ -365,7 +372,7 @@ bool QuadcopterWorldPlugin::ReceiveMotorCommand()
 	}
 
     gazebo::common::Time::NSleep(100);
-    if (this->arduCopterOnline)
+    if (this->aircraftOnline)
     {
       gzwarn << "Broken Quadcopter connection, count ["
              << this->connectionTimeoutCount
@@ -375,33 +382,31 @@ bool QuadcopterWorldPlugin::ReceiveMotorCommand()
         this->connectionTimeoutMaxCount)
       {
         this->connectionTimeoutCount = 0;
-        this->arduCopterOnline = false;
+        this->aircraftOnline = false;
         gzwarn << "Broken Quadcopter connection, resetting motor control.\n";
-        this->ResetPIDs();
       }
     }
 	commandProcessed = FALSE;
   }
   else
   {
-    if (!this->arduCopterOnline)
+    if (!this->aircraftOnline)
     {
-      gzdbg << "Quadcopter controller online detected.\n";
+      gzdbg << "Aircraft controller online detected.\n";
       // made connection, set some flags
       this->connectionTimeoutCount = 0;
-      this->arduCopterOnline = true;
+      this->aircraftOnline = true;
     }
 
     //std::cout "Seq " << pkt.seq << "\n";
 
     // compute command based on requested motorSpeed
-    for (unsigned i = 0; i < this->rotors.size(); ++i)
+    for (unsigned i = 0; i < this->numActuators; ++i)
     {
       if (i < MAX_MOTORS)
       {
         // std::cout << i << ": " << pkt.motorSpeed[i] << "\n";
-        this->rotors[i].cmd = this->rotors[i].maxRpm *
-          pkt.motorSpeed[i];
+        //pkt.motorSpeed[i];
       }
       else
       {
@@ -420,12 +425,12 @@ bool QuadcopterWorldPlugin::ReceiveMotorCommand()
 }
 
 /////////////////////////////////////////////////
-void QuadcopterWorldPlugin::SendState(bool motorCommandProcessed) const
+void FlightControllerPlugin::SendState(bool motorCommandProcessed) const
 {
   // send_fdm
   fdmPacket pkt;
 
-  pkt.timestamp = this->_world->SimTime().Double();
+  pkt.timestamp = this->world->SimTime().Double();
 
   if (motorCommandProcessed){
 	  pkt.status_code = 1;

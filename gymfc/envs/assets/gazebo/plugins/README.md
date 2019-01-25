@@ -1,4 +1,4 @@
-
+Follows Gazebo [style guide](http://gazebosim.org/tutorials?tut=contrib_code)
 # Build Instructions
 
 1. mkdir build
