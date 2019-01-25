@@ -8,3 +8,4 @@ Makefile
 *.cmake
 CMakeCache.txt
 **/CMakeFiles/*
+.vimrc
