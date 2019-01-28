@@ -33,16 +33,15 @@
       <uri>model://sun</uri>
     </include>
 
-    <model name="quadcopter_attitude_control">
-      <include>
-		  <uri>model://quadcopter_attitude_control</uri>
-      </include>
-    </model>
+    <include>
+      <uri>model://attitude_control_training_rig</uri>
+    </include>
 
 
-    <plugin name="arducopter_plugin" filename="libQuadcopterWorldPlugin.so">
+    <plugin name="gymfc_plugin" filename="libFlightControllerPlugin.so">
       <connectionTimeoutMaxCount>5</connectionTimeoutMaxCount>
-	  <loopRate>1000.0</loopRate>
+      <loopRate>1000.0</loopRate>
+      <robotNamespace>gymfc</robotNamespace>
     </plugin>
 
 

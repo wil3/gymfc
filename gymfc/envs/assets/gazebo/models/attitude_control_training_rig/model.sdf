@@ -1,0 +1,19 @@
+<?xml version='1.0'?>
+<sdf version="1.6">
+ <model name="attitude_control_training_rig">
+	 
+	<enable_wind>true</enable_wind>
+	<!-- Place the aircraft 1m above the ground 
+		 x y z r p y -->
+	<pose>0 0 0 0 0 0</pose> 
+	<link name="pivot"></link>
+
+	<!-- Fix the pivot base to the world -->
+	<joint name="base_joint" type="fixed">
+		<parent>world</parent>
+		<child>pivot</child>
+		<pose>0 0 0 0 0 0</pose>
+	</joint>
+
+  </model>
+</sdf>

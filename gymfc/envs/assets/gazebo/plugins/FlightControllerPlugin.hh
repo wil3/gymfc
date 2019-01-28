@@ -30,10 +30,16 @@
 #include "CommandMotorSpeed.pb.h"
 
 #define MAX_MOTORS 255
+#define DIGITAL_TWIN_SDF_ENV "DIGITAL_TWIN_SDF"
+//#define DIGITAL_TWIN_ATTACH_LINK "CoM"
 
 namespace gazebo
 {
   static const std::string kDefaultCmdPubTopic = "/gazebo/command/motor_speed";
+ // TODO Change link name to CoM
+  const std::string DIGITAL_TWIN_ATTACH_LINK = "base_link";
+  const std::string kTrainingRigModelName = "attitude_control_training_rig";
+
 
 /// \brief A servo packet.
 struct ServoPacket
@@ -99,6 +105,12 @@ class FlightControllerPlugin : public WorldPlugin
   private: void SendState(bool motorCommandProcessed) const;
 	private: void SoftReset();
 
+  private: void LoadDigitalTwin();
+
+  // Calling GetLink from a model will not traverse nested models
+  // until found, this function will find a link name from the 
+  // entire model
+  private: physics::LinkPtr FindLinkByName(physics::ModelPtr _model, std::string _linkName);
   private: std::string robotNamespace;
 
 	private: boost::thread callbackLoopThread;
@@ -136,6 +148,8 @@ class FlightControllerPlugin : public WorldPlugin
 	/// \brief false before ardupilot controller is online
 	/// to allow gazebo to continue without waiting
 	public: bool aircraftOnline;
+
+  private: std::string digitalTwinSDF;
 
   private: int numActuators;
 

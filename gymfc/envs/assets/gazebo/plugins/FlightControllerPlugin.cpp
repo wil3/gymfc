@@ -80,6 +80,13 @@ bool getSdfParam(sdf::ElementPtr _sdf, const std::string &_name,
   }
   return false;
 }
+bool hasEnding (std::string const &fullString, std::string const &ending) {
+    if (fullString.length() >= ending.length()) {
+        return (0 == fullString.compare (fullString.length() - ending.length(), ending.length(), ending));
+    } else {
+        return false;
+    }
+}
 
 GZ_REGISTER_WORLD_PLUGIN(FlightControllerPlugin)
 
@@ -107,6 +114,16 @@ FlightControllerPlugin::FlightControllerPlugin()
     gzerr << "failed to bind with 127.0.0.1:" << port <<", aborting plugin.\n";
     return;
   }
+
+  if(const char* env_p =  std::getenv(DIGITAL_TWIN_SDF_ENV)){
+    this->digitalTwinSDF = env_p;
+  } else {
+    gzerr << "Could not load digital twin model from environment variable " << DIGITAL_TWIN_SDF_ENV << "\n";
+    return;
+
+  }
+
+
 
   this->aircraftOnline = false;
 
@@ -176,14 +193,116 @@ void FlightControllerPlugin::ProcessSDF(sdf::ElementPtr _sdf)
 
 }
 
-void FlightControllerPlugin::SoftReset(){
+void FlightControllerPlugin::SoftReset()
+{
   this->world->ResetTime();
   this->world->ResetEntities(gazebo::physics::Base::BASE);
 	this->world->ResetPhysicsStates();
 }
 
+
+physics::LinkPtr FlightControllerPlugin::FindLinkByName(physics::ModelPtr _model, std::string _linkName)
+{
+  for (auto link : _model->GetLinks())
+  {
+    gzdbg << "Link name: " << link->GetName() << std::endl;
+    if (hasEnding(link->GetName(), _linkName))
+    {
+      return link;
+    }
+
+  }
+  return NULL;
+
+}
+void FlightControllerPlugin::LoadDigitalTwin()
+{
+  gzdbg << "[fc] Inserting digital twin from, " << this->digitalTwinSDF << ".\n";
+   // load and check sdf file
+  const std::string sdfPath(this->digitalTwinSDF);
+
+  sdf::SDFPtr sdfElement(new sdf::SDF());
+  sdf::init(sdfElement);
+  if (!sdf::readFile(sdfPath, sdfElement))
+  {
+    gzerr << sdfPath << " is not a valid SDF file!" << std::endl;
+    return;
+  }
+
+  // start parsing model
+  const sdf::ElementPtr rootElement = sdfElement->Root();
+  if (!rootElement->HasElement("model"))
+  {
+    gzerr << sdfPath << " is not a model SDF file!" << std::endl;
+    return;
+  }
+  const sdf::ElementPtr modelElement = rootElement->GetElement("model");
+  const std::string modelName = modelElement->Get<std::string>("name");
+  gzdbg << "Found " << modelName << " model!" << std::endl;
+
+  unsigned int startModelCount = this->world->ModelCount();
+  //this->world->InsertModelFile(sdfElement);
+  this->world->InsertModelSDF(*sdfElement);
+
+  // TODO Better way to do this?
+  // It appears the inserted model is not available in the world
+  // right away, maybe due to message passing?
+  // Poll until its there
+  while (1)
+  {
+    unsigned int modelCount = this->world->ModelCount();
+    if (modelCount >= startModelCount + 1)
+    {
+      break;
+    } else {
+      gazebo::common::Time::MSleep(1000);
+    }
+  }
+  
+  gzdbg << "Num models=" << this->world->ModelCount() << std::endl;
+  for (unsigned int i=0; i<this->world->ModelCount(); i++)
+  {
+    gzdbg << "Model " << i << ":" << this->world->ModelByIndex(i)->GetScopedName() << std::endl;
+  }
+
+  // Now get a pointer to the model
+  physics::ModelPtr model = this->world->ModelByName(modelName);
+  if (!model){
+    gzerr << "Could not access model " << modelName <<" from world"<<std::endl;
+    return;
+  }
+
+  //Find the base link to attached to the world
+  gzdbg << " Before get link\n";
+  physics::LinkPtr digitalTwinCoMLink = FindLinkByName(model, DIGITAL_TWIN_ATTACH_LINK);
+  if (!link){
+    gzerr << "Could not find link '" << DIGITAL_TWIN_ATTACH_LINK <<" from model " << modelName <<std::endl;
+    return;
+  }
+
+  gzdbg << " After get link\n";
+  
+  physics::ModelPtr trainingRigModel = this->world->ModelByName(kTrainingRigModelName);
+  if (!trainingRigModel){
+    gzerr << "Could not find training rig"<<std::endl;
+    return;
+  }
+
+  
+
+
+  // Create the actual ball link, connecting the digital twin to the sim world
+  physics::JointPtr joint = trainingRigModel->CreateJoint("ball_joint", "ball", trainingRigModel->GetLink("pivot"), digitalTwinCoMLink);
+  
+  joint->Init();
+  // This is actually great because we've removed the ground plane so there is no possible collision
+  gzdbg << "Ball joint created\n";
+}
 void FlightControllerPlugin::LoopThread()
 {
+
+  this->LoadDigitalTwin();
+
 	double msPeriod = 1000.0/this->loopRate;
   this->resetWorld = FALSE;
 	while (1){
