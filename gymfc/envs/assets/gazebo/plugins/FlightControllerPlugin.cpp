@@ -120,9 +120,14 @@ FlightControllerPlugin::FlightControllerPlugin()
   } else {
     gzerr << "Could not load digital twin model from environment variable " << DIGITAL_TWIN_SDF_ENV << "\n";
     return;
-
   }
 
+  if(const char* env_p =  std::getenv(NUM_MOTORS_ENV)){
+    this->numActuators = std::stoi(env_p);
+  } else {
+    gzerr << "Environment variable " << NUM_MOTORS_ENV << " not set.\n";
+    return;
+  }
 
 
   this->aircraftOnline = false;
@@ -520,12 +525,13 @@ bool FlightControllerPlugin::ReceiveMotorCommand()
     //std::cout "Seq " << pkt.seq << "\n";
 
     // compute command based on requested motorSpeed
-    for (unsigned i = 0; i < this->numActuators; ++i)
+    gzdbg << "[fc] Received motor command: ";
+    for (unsigned int i = 0; i < this->numActuators; ++i)
     {
       if (i < MAX_MOTORS)
       {
         // std::cout << i << ": " << pkt.motorSpeed[i] << "\n";
-        //pkt.motorSpeed[i];
+          std::cout << pkt.motor[i] << " ";
       }
       else
       {
@@ -534,6 +540,8 @@ bool FlightControllerPlugin::ReceiveMotorCommand()
       }
 	  commandProcessed = TRUE;
     }
+    std::cout << std::endl;
+
       if (pkt.resetWorld == 1) {
           this->resetWorld = TRUE;
       } else {

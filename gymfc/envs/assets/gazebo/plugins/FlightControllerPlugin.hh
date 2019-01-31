@@ -31,6 +31,7 @@
 
 #define MAX_MOTORS 255
 #define DIGITAL_TWIN_SDF_ENV "DIGITAL_TWIN_SDF"
+#define NUM_MOTORS_ENV "NUM_MOTORS"
 //#define DIGITAL_TWIN_ATTACH_LINK "CoM"
 
 namespace gazebo

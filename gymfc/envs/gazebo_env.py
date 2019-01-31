@@ -202,7 +202,10 @@ class GazeboEnv(gym.Env):
             self.setup_file = gz["SetupFile"]
             self.world = gz["World"]
             self.host = gz["Hostname"]
+            self.aircraft_model_dir = gz["AircraftModelDir"]
             self.aircraft_model = gz["AircraftModel"]
+            self.aircraft_plugin_dir = gz["AircraftPluginDir"]
+
             
             # Search for open ports to allow multile instances of the environment
             # to run in parrellel. Add a nonce to the start port to prevent any
@@ -340,6 +343,11 @@ class GazeboEnv(gym.Env):
 
         signal.signal(signal.SIGINT, self._signal_handler)
 
+        # Pass the number of motors to the plugin 
+        # TODO If we find there are to many parameters to 
+        # pass to the plugin switch to JSON
+        os.environ["NUM_MOTORS"] = str(self.motor_count)
+
         # Port the aircraft reads in through this environment variable,
         # this is the network channel set up to pass sensor and ESC
         # data back and forth
@@ -360,9 +368,15 @@ class GazeboEnv(gym.Env):
 
         # Add the new paths
         os.environ["GAZEBO_MODEL_PATH"] += (os.pathsep + model_path + os.pathsep
-        + self.aircraft_model)
+        + self.aircraft_model_dir)
         os.environ["GAZEBO_RESOURCE_PATH"] += os.pathsep + world_path
-        os.environ["GAZEBO_PLUGIN_PATH"] += os.pathsep + plugin_path
+        os.environ["GAZEBO_PLUGIN_PATH"] += (os.pathsep + plugin_path + os.pathsep +
+self.aircraft_plugin_dir)
+
+        os.environ["DIGITAL_TWIN_SDF"] = self.aircraft_model
+
+        print ("Model Path=", os.environ["GAZEBO_MODEL_PATH"])
+        print ("Plugin Path=",os.environ["GAZEBO_PLUGIN_PATH"] )
 
         target_world = os.path.join(gz_assets_path, "worlds", self.world)
         p = subprocess.Popen(["gzserver", "--verbose", target_world], shell=False) 
