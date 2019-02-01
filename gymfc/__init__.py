@@ -8,7 +8,7 @@ default_kwargs = {
 #Episodic task with ESC supporting sensors for telemetry
 kwargs = {
     "memory_size": 1,
-    "max_sim_time": 1.,
+    "max_sim_time": 30.,
     }
 kwargs.update(default_kwargs)
 id = 'AttFC_GyroErr-MotorVel_M4_Ep-v0'

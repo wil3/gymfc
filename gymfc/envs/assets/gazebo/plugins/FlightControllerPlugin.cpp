@@ -167,8 +167,15 @@ void FlightControllerPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf
   this->nodeHandle = transport::NodePtr(new transport::Node());
   this->nodeHandle->Init(this->robotNamespace);
 
-  this->cmdPub = this->nodeHandle->Advertise<cmd_msgs::msgs::CommandMotorSpeed>(this->cmdPubTopic);
+  //Subscribe to all the sensors
+  this->imuSub = this->nodeHandle->Subscribe<sensor_msgs::msgs::Imu>(this->imuSubTopic, &this->imuCallback, this);
 
+  for (unsigned int i = 0; i < this->numActuators; i++)
+  {
+    this->nodeHandle->Subscribe<sensor_msgs::msgs::Esc>(this->escSubTopic + "/" + std::to_string(i) , &this->EscSensorCallback, this);
+  }
+
+  this->cmdPub = this->nodeHandle->Advertise<cmd_msgs::msgs::CommandMotorSpeed>(this->cmdPubTopic);
   // Force pause because we drive the simulation steps
   this->world->SetPaused(TRUE);
 
@@ -178,12 +185,29 @@ void FlightControllerPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf
   this->callbackLoopThread = boost::thread( boost::bind( &FlightControllerPlugin::LoopThread, this) );
 }
 
+void FlightControllerPlugin::EscSensorCallback(EscSensorPtr _escSensor)
+{
+
+}
+void FlightControllerPlugin::ImuCallback(ImuSensorPtr _imuSensor)
+{
+
+}
 void FlightControllerPlugin::ProcessSDF(sdf::ElementPtr _sdf)
 {
   this->cmdPubTopic = kDefaultCmdPubTopic;
   if (_sdf->HasElement("commandPubTopic")){
       this->cmdPubTopic = _sdf->GetElement("commandPubTopic")->Get<std::string>();
   }
+  this->imuSubTopic = kDefaultImuSubTopic;
+  if (_sdf->HasElement("imuSubTopic")){
+      this->cmdPubTopic = _sdf->GetElement("imuSubTopic")->Get<std::string>();
+  }
+  this->imuSubTopic = kDefaultEscSubTopic;
+  if (_sdf->HasElement("escSubTopicPrefix")){
+      this->cmdPubTopic = _sdf->GetElement("escSubTopicPrefix")->Get<std::string>();
+  }
+
 
   if (_sdf->HasElement("robotNamespace"))
     this->robotNamespace = _sdf->GetElement("robotNamespace")->Get<std::string>();
@@ -223,7 +247,7 @@ physics::LinkPtr FlightControllerPlugin::FindLinkByName(physics::ModelPtr _model
 void FlightControllerPlugin::LoadDigitalTwin()
 {
   gzdbg << "[fc] Inserting digital twin from, " << this->digitalTwinSDF << ".\n";
-   // load and check sdf file
+   // Load the root digital twin sdf file
   const std::string sdfPath(this->digitalTwinSDF);
 
   sdf::SDFPtr sdfElement(new sdf::SDF());
@@ -247,6 +271,7 @@ void FlightControllerPlugin::LoadDigitalTwin()
 
   unsigned int startModelCount = this->world->ModelCount();
   //this->world->InsertModelFile(sdfElement);
+  
   this->world->InsertModelSDF(*sdfElement);
 
   // TODO Better way to do this?
@@ -280,12 +305,16 @@ void FlightControllerPlugin::LoadDigitalTwin()
   //Find the base link to attached to the world
   gzdbg << " Before get link\n";
   physics::LinkPtr digitalTwinCoMLink = FindLinkByName(model, DIGITAL_TWIN_ATTACH_LINK);
-  if (!link){
+  if (!link)
+  {
     gzerr << "Could not find link '" << DIGITAL_TWIN_ATTACH_LINK <<" from model " << modelName <<std::endl;
     return;
+  } 
+  else
+  {
+      gzdbg << " Link Found\n";
   }
 
-  gzdbg << " After get link\n";
   
   physics::ModelPtr trainingRigModel = this->world->ModelByName(kTrainingRigModelName);
   if (!trainingRigModel){
@@ -298,15 +327,28 @@ void FlightControllerPlugin::LoadDigitalTwin()
 
   // Create the actual ball link, connecting the digital twin to the sim world
   physics::JointPtr joint = trainingRigModel->CreateJoint("ball_joint", "ball", trainingRigModel->GetLink("pivot"), digitalTwinCoMLink);
-  
+  if (!joint)
+  {
+    gzerr << "Could not create joint"<<std::endl;
+    return;
+  }
+  /*  
+  joint->SetAnchor(0, ignition::math::Vector3d(0, 0, 0));
+  joint->SetAnchor(1, ignition::math::Vector3d(0, 0, 0));
+  joint->SetAnchor(2, ignition::math::Vector3d(0, 0, 0));
+  */
   joint->Init();
+  
   // This is actually great because we've removed the ground plane so there is no possible collision
   gzdbg << "Ball joint created\n";
 }
 void FlightControllerPlugin::LoopThread()
 {
 
+
   this->LoadDigitalTwin();
+  this->SoftReset();
+
 
 	double msPeriod = 1000.0/this->loopRate;
   this->resetWorld = FALSE;
@@ -358,9 +400,13 @@ void FlightControllerPlugin::LoopThread()
 
 			if (this->aircraftOnline)
 			{
-          //pkt.motorSpeed[i];
-        //cmd_msgs::CommandMotorSpeed cmd;
-				//this->cmdPub->Publish(cmd);
+        cmd_msgs::msgs::CommandMotorSpeed cmd;
+        for (unsigned int i = 0; i < this->numActuators; i++)
+        {
+          //gzdbg << i << "=" << this->motor[i] << std::endl;
+          cmd.add_motor_speed(this->motor[i]);
+        }
+				this->cmdPub->Publish(cmd);
 			}
 			this->lastControllerUpdateTime = curTime;
 			if (!this->resetWorld)
@@ -525,13 +571,14 @@ bool FlightControllerPlugin::ReceiveMotorCommand()
     //std::cout "Seq " << pkt.seq << "\n";
 
     // compute command based on requested motorSpeed
-    gzdbg << "[fc] Received motor command: ";
-    for (unsigned int i = 0; i < this->numActuators; ++i)
+    //gzdbg << "[fc] Received motor command: ";
+    for (unsigned int i = 0; i < this->numActuators; i++)
     {
       if (i < MAX_MOTORS)
       {
         // std::cout << i << ": " << pkt.motorSpeed[i] << "\n";
-          std::cout << pkt.motor[i] << " ";
+     //     std::cout << pkt.motor[i] << " ";
+         this->motor[i] = pkt.motor[i];
       }
       else
       {
@@ -540,7 +587,7 @@ bool FlightControllerPlugin::ReceiveMotorCommand()
       }
 	  commandProcessed = TRUE;
     }
-    std::cout << std::endl;
+    //std::cout << std::endl;
 
       if (pkt.resetWorld == 1) {
           this->resetWorld = TRUE;

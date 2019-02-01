@@ -37,10 +37,14 @@
 namespace gazebo
 {
   static const std::string kDefaultCmdPubTopic = "/gazebo/command/motor_speed";
+  static const std::string kDefaultImuSubTopic = "/aircraft/sensor/imu";
+  static const std::string kDefaultEscSubTopic = "/aircraft/sensor/esc";
  // TODO Change link name to CoM
   const std::string DIGITAL_TWIN_ATTACH_LINK = "base_link";
   const std::string kTrainingRigModelName = "attitude_control_training_rig";
 
+  typedef const boost::shared_ptr<const sensor_msgs::msgs::Imu> ImuPtr;
+  typedef const boost::shared_ptr<const sensor_msgs::msgs::Esc> EscSensorPtr;
 
 /// \brief A servo packet.
 struct ServoPacket
@@ -108,6 +112,8 @@ class FlightControllerPlugin : public WorldPlugin
 
   private: void LoadDigitalTwin();
 
+  private: void EscSensorCallback(EscSensorPtr _escSensor);
+  private: void ImuCallback(ImuSensorPtr _imuSensor);
   // Calling GetLink from a model will not traverse nested models
   // until found, this function will find a link name from the 
   // entire model
@@ -161,6 +167,7 @@ class FlightControllerPlugin : public WorldPlugin
 	/// before marking Quadcopter offline
 	public: int connectionTimeoutMaxCount;
 
+  private: float motor[MAX_MOTORS];
   private: std::string cmdPubTopic;
   private: transport::NodePtr nodeHandle;
   // Now define the communication channels with the digital twin
@@ -170,8 +177,10 @@ class FlightControllerPlugin : public WorldPlugin
   private: transport::PublisherPtr cmdPub;
 
    // Subscribe to all possible sensors
-  private: transport::SubscriberPtr sensorSub;
+  private: transport::SubscriberPtr imuSub;
   private: cmd_msgs::msgs::CommandMotorSpeed cmdMsg;
+
+
   };
 }
 #endif

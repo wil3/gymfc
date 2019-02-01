@@ -6,6 +6,7 @@ import numpy as np
 from mpi4py import MPI
 import math
 import os
+import time
 
 def plot_step_response(desired, actual,
                  end=1., title=None,
@@ -122,6 +123,8 @@ def main(env_id, seed):
     rank = MPI.COMM_WORLD.Get_rank()
     workerseed = seed + 1000000 * rank
     env.seed(workerseed)
+    env.render()
+    time.sleep(5)
     pi = StaticPolicy(np.ones(4))
     desireds, actuals = eval(env, pi)
     title = "PID Step Response in Environment {}".format(env_id)
