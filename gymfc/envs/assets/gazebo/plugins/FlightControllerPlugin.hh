@@ -27,7 +27,9 @@
 #include <gazebo/physics/Base.hh>
 #include "gazebo/transport/transport.hh"
 
-#include "CommandMotorSpeed.pb.h"
+#include "MotorCommand.pb.h"
+#include "EscSensor.pb.h"
+#include "Imu.pb.h"
 
 #define MAX_MOTORS 255
 #define DIGITAL_TWIN_SDF_ENV "DIGITAL_TWIN_SDF"
@@ -36,7 +38,8 @@
 
 namespace gazebo
 {
-  static const std::string kDefaultCmdPubTopic = "/gazebo/command/motor_speed";
+  //static const std::string kDefaultCmdPubTopic = "/gazebo/command/motor_speed";
+  static const std::string kDefaultCmdPubTopic = "/aircraft/command/motor";
   static const std::string kDefaultImuSubTopic = "/aircraft/sensor/imu";
   static const std::string kDefaultEscSubTopic = "/aircraft/sensor/esc";
  // TODO Change link name to CoM
@@ -44,7 +47,7 @@ namespace gazebo
   const std::string kTrainingRigModelName = "attitude_control_training_rig";
 
   typedef const boost::shared_ptr<const sensor_msgs::msgs::Imu> ImuPtr;
-  typedef const boost::shared_ptr<const sensor_msgs::msgs::Esc> EscSensorPtr;
+  typedef const boost::shared_ptr<const sensor_msgs::msgs::EscSensor> EscSensorPtr;
 
 /// \brief A servo packet.
 struct ServoPacket
@@ -56,9 +59,9 @@ struct ServoPacket
 
 };
 
-/// \brief Flight Dynamics Model packet that is sent back to the Quadcopter
-// NOTE: Because of struct padding and how this is serialized to bytes must be in multiple of 4? 8?
-struct fdmPacket
+/// \brief State packet that is sent back to the agent
+// XXX Because of struct padding and how this is serialized to bytes must be in multiple of 4? 8?
+struct StatePacket
 {
   /// \brief packet timestamp
   double timestamp;
@@ -112,12 +115,15 @@ class FlightControllerPlugin : public WorldPlugin
 
   private: void LoadDigitalTwin();
 
-  private: void EscSensorCallback(EscSensorPtr _escSensor);
-  private: void ImuCallback(ImuSensorPtr _imuSensor);
+  private: void EscSensorCallback(EscSensorPtr &_escSensor);
+  private: void ImuCallback(ImuPtr &_imu);
   // Calling GetLink from a model will not traverse nested models
   // until found, this function will find a link name from the 
   // entire model
   private: physics::LinkPtr FindLinkByName(physics::ModelPtr _model, std::string _linkName);
+
+
+
   private: std::string robotNamespace;
 
 	private: boost::thread callbackLoopThread;
@@ -169,6 +175,8 @@ class FlightControllerPlugin : public WorldPlugin
 
   private: float motor[MAX_MOTORS];
   private: std::string cmdPubTopic;
+  private: std::string imuSubTopic;
+  private: std::string escSubTopic;
   private: transport::NodePtr nodeHandle;
   // Now define the communication channels with the digital twin
   // The architecure treats this world plugin as the flight controller
@@ -178,7 +186,9 @@ class FlightControllerPlugin : public WorldPlugin
 
    // Subscribe to all possible sensors
   private: transport::SubscriberPtr imuSub;
-  private: cmd_msgs::msgs::CommandMotorSpeed cmdMsg;
+  //private: transport::SubscriberPtr escSub;
+  private: transport::SubscriberPtr escSub[MAX_MOTORS];
+  private: cmd_msgs::msgs::MotorCommand cmdMsg;
 
 
   };

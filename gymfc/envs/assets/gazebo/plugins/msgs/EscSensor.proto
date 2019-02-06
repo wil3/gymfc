@@ -1,0 +1,11 @@
+syntax = "proto2";
+package sensor_msgs.msgs;
+
+message EscSensor 
+{
+  required int64   id = 1;
+  required float   motor_speed  = 2;
+  required float   temperature = 3;
+  required float   voltage = 4;
+  required float   current = 5;
+}

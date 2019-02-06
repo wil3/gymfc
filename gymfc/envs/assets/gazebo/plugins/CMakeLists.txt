@@ -43,12 +43,12 @@ list(APPEND CMAKE_CXX_FLAGS ${GAZEBO_CXX_FLAGS})
 #--------------------#
 
 set(control_msgs
-  msgs/CommandMotorSpeed.proto
+  msgs/MotorCommand.proto
   )
 set(sensor_msgs
   msgs/Float.proto
   msgs/Imu.proto
-  msgs/MotorSpeed.proto
+  msgs/EscSensor.proto
   ${PROTOBUF_IMPORT_DIRS}/vector3d.proto
   ${PROTOBUF_IMPORT_DIRS}/quaternion.proto
   )

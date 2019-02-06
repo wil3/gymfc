@@ -52,7 +52,9 @@ typedef SSIZE_T ssize_t;
 
 #include "FlightControllerPlugin.hh"
 
-#include "CommandMotorSpeed.pb.h"
+#include "MotorCommand.pb.h"
+#include "EscSensor.pb.h"
+#include "Imu.pb.h"
 
 using namespace gazebo;
 /// \brief Obtains a parameter from sdf.
@@ -168,14 +170,17 @@ void FlightControllerPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf
   this->nodeHandle->Init(this->robotNamespace);
 
   //Subscribe to all the sensors
-  this->imuSub = this->nodeHandle->Subscribe<sensor_msgs::msgs::Imu>(this->imuSubTopic, &this->imuCallback, this);
+  this->imuSub = this->nodeHandle->Subscribe<sensor_msgs::msgs::Imu>(this->imuSubTopic, &FlightControllerPlugin::ImuCallback, this);
 
+  //Each defined motor will have a unique index, since they are indpendent they must come in 
+  //as separate messages
   for (unsigned int i = 0; i < this->numActuators; i++)
   {
-    this->nodeHandle->Subscribe<sensor_msgs::msgs::Esc>(this->escSubTopic + "/" + std::to_string(i) , &this->EscSensorCallback, this);
+    this->escSub[i] = this->nodeHandle->Subscribe<sensor_msgs::msgs::EscSensor>(this->escSubTopic + "/" + std::to_string(i) , &FlightControllerPlugin::EscSensorCallback, this);
   }
+  //this->escSub = this->nodeHandle->Subscribe<sensor_msgs::msgs::EscSensor>("/aircraft/sensor/esc/0", &FlightControllerPlugin::EscSensorCallback, this);
 
-  this->cmdPub = this->nodeHandle->Advertise<cmd_msgs::msgs::CommandMotorSpeed>(this->cmdPubTopic);
+  this->cmdPub = this->nodeHandle->Advertise<cmd_msgs::msgs::MotorCommand>(this->cmdPubTopic);
   // Force pause because we drive the simulation steps
   this->world->SetPaused(TRUE);
 
@@ -185,11 +190,12 @@ void FlightControllerPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf
   this->callbackLoopThread = boost::thread( boost::bind( &FlightControllerPlugin::LoopThread, this) );
 }
 
-void FlightControllerPlugin::EscSensorCallback(EscSensorPtr _escSensor)
+void FlightControllerPlugin::EscSensorCallback(EscSensorPtr &_escSensor)
 {
+  gzdbg << "Receiving esc sensor " << _escSensor->id() << std::endl;
 
 }
-void FlightControllerPlugin::ImuCallback(ImuSensorPtr _imuSensor)
+void FlightControllerPlugin::ImuCallback(ImuPtr &_imu)
 {
 
 }
@@ -201,11 +207,11 @@ void FlightControllerPlugin::ProcessSDF(sdf::ElementPtr _sdf)
   }
   this->imuSubTopic = kDefaultImuSubTopic;
   if (_sdf->HasElement("imuSubTopic")){
-      this->cmdPubTopic = _sdf->GetElement("imuSubTopic")->Get<std::string>();
+      this->imuSubTopic = _sdf->GetElement("imuSubTopic")->Get<std::string>();
   }
-  this->imuSubTopic = kDefaultEscSubTopic;
+  this->escSubTopic = kDefaultEscSubTopic;
   if (_sdf->HasElement("escSubTopicPrefix")){
-      this->cmdPubTopic = _sdf->GetElement("escSubTopicPrefix")->Get<std::string>();
+      this->escSubTopic = _sdf->GetElement("escSubTopicPrefix")->Get<std::string>();
   }
 
 
@@ -400,11 +406,11 @@ void FlightControllerPlugin::LoopThread()
 
 			if (this->aircraftOnline)
 			{
-        cmd_msgs::msgs::CommandMotorSpeed cmd;
+        cmd_msgs::msgs::MotorCommand cmd;
         for (unsigned int i = 0; i < this->numActuators; i++)
         {
           //gzdbg << i << "=" << this->motor[i] << std::endl;
-          cmd.add_motor_speed(this->motor[i]);
+          cmd.add_motor(this->motor[i]);
         }
 				this->cmdPub->Publish(cmd);
 			}
@@ -502,14 +508,6 @@ bool FlightControllerPlugin::Bind(const char *_address, const uint16_t _port)
 /////////////////////////////////////////////////
 bool FlightControllerPlugin::ReceiveMotorCommand()
 {
-  // Added detection for whether ArduCopter is online or not.
-  // If ArduCopter is detected (receive of fdm packet from someone),
-  // then socket receive wait time is increased from 1ms to 1 sec
-  // to accomodate network jitter.
-  // If ArduCopter is not detected, receive call blocks for 1ms
-  // on each call.
-  // Once ArduCopter presence is detected, it takes this many
-  // missed receives before declaring the FCS offline.
 
   bool commandProcessed = FALSE;
   ServoPacket pkt;
@@ -601,8 +599,7 @@ bool FlightControllerPlugin::ReceiveMotorCommand()
 /////////////////////////////////////////////////
 void FlightControllerPlugin::SendState(bool motorCommandProcessed) const
 {
-  // send_fdm
-  fdmPacket pkt;
+  StatePacket pkt;
 
   pkt.timestamp = this->world->SimTime().Double();
 
