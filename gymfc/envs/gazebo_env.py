@@ -17,6 +17,7 @@ import time
 import configparser
 import json
 logger = logging.getLogger("gymfc")
+from gymfc.msgs import State_pb2 
 
 class PWMPacket:
     def __init__(self, pwm_values, motor_mapping, reset=False):
@@ -57,7 +58,18 @@ class FDMPacket:
         self.motor_mapping = motor_mapping
 
     def decode(self, data):
-        unpacked = np.array(list(struct.unpack("<d3d3d4d3d3d4dQ", data)))
+        print ("Data=", data)
+        state = State_pb2.State()
+        state.ParseFromString(data)
+        print ("Sim time=", state.sim_time)
+        print ("test string=", state.test_string)
+
+
+    def decode2(self, data):
+        print ("Receiving data of size ", len(data))
+        print ("Data=", data)
+        #unpacked = np.array(list(struct.unpack("<d3d3d4d3d3d4dQ", data)))
+        unpacked = np.array(list(struct.unpack("<d3d3d4d3d3d4d4dQ", data)))
         self.timestamp = unpacked[0]
         # All angular velocities from gazebo are in radians/s unless otherwise stated
         self.angular_velocity_rpy = unpacked[1:4]

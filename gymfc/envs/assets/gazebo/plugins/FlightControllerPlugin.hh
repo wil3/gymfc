@@ -23,6 +23,7 @@
 //#include <boost/thread.hpp>
 #include <gazebo/physics/World.hh>
 #include <gazebo/sensors/sensors.hh>
+#include "gazebo/common/Events.hh"
 
 #include <gazebo/physics/Base.hh>
 #include "gazebo/transport/transport.hh"
@@ -82,9 +83,15 @@ struct StatePacket
   double positionXYZ[3];
 
   double motorVelocity[4];
+  
+  /*
+  
+  double escMotorSpeed[4];
+   */
  // uint32_t iter;
   uint64_t status_code;
   
+  std::vector<uint64_t> escTemperature; 
 //  unsigned int seq;
 };
 class FlightControllerPlugin : public WorldPlugin
@@ -111,6 +118,7 @@ class FlightControllerPlugin : public WorldPlugin
 
   /// \brief Send state to Quadcopter
   private: void SendState(bool motorCommandProcessed) const;
+  //private: void SendState(bool motorCommandProcessed);
 	private: void SoftReset();
 
   private: void LoadDigitalTwin();
@@ -123,6 +131,8 @@ class FlightControllerPlugin : public WorldPlugin
   private: physics::LinkPtr FindLinkByName(physics::ModelPtr _model, std::string _linkName);
 
 
+
+  private: void UpdateEnd();
 
   private: std::string robotNamespace;
 
@@ -189,8 +199,12 @@ class FlightControllerPlugin : public WorldPlugin
   //private: transport::SubscriberPtr escSub;
   private: transport::SubscriberPtr escSub[MAX_MOTORS];
   private: cmd_msgs::msgs::MotorCommand cmdMsg;
+  private: unsigned long numCallbacks = 0;
+  private: unsigned long callbackCount = 0;
 
+  private: boost::condition_variable callbackCondition;
 
+  private: StatePacket statePkt;
   };
 }
 #endif

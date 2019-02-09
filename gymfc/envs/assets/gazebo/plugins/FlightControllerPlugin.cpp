@@ -56,6 +56,8 @@ typedef SSIZE_T ssize_t;
 #include "EscSensor.pb.h"
 #include "Imu.pb.h"
 
+#include "State.pb.h"
+
 using namespace gazebo;
 /// \brief Obtains a parameter from sdf.
 /// \param[in] _sdf Pointer to the sdf object.
@@ -91,6 +93,8 @@ bool hasEnding (std::string const &fullString, std::string const &ending) {
 }
 
 GZ_REGISTER_WORLD_PLUGIN(FlightControllerPlugin)
+
+boost::mutex g_CallbackMutex;
 
 FlightControllerPlugin::FlightControllerPlugin() 
 {
@@ -131,6 +135,7 @@ FlightControllerPlugin::FlightControllerPlugin()
     return;
   }
 
+  //this->statePkt.escTemperature.reserve(this->numActuators);
 
   this->aircraftOnline = false;
 
@@ -165,6 +170,8 @@ void FlightControllerPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf
   this->world = _world;
   this->ProcessSDF(_sdf);
 
+  // IMU + ESC Sensor x motors
+  this->numCallbacks = 1 + this->numActuators;
 
   this->nodeHandle = transport::NodePtr(new transport::Node());
   this->nodeHandle->Init(this->robotNamespace);
@@ -181,6 +188,11 @@ void FlightControllerPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf
   //this->escSub = this->nodeHandle->Subscribe<sensor_msgs::msgs::EscSensor>("/aircraft/sensor/esc/0", &FlightControllerPlugin::EscSensorCallback, this);
 
   this->cmdPub = this->nodeHandle->Advertise<cmd_msgs::msgs::MotorCommand>(this->cmdPubTopic);
+
+  /* 
+  this->updateConnection = event::Events::ConnectWorldUpdateEnd(
+       std::bind(&FlightControllerPlugin::UpdateEnd, this));
+       */
   // Force pause because we drive the simulation steps
   this->world->SetPaused(TRUE);
 
@@ -190,13 +202,44 @@ void FlightControllerPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf
   this->callbackLoopThread = boost::thread( boost::bind( &FlightControllerPlugin::LoopThread, this) );
 }
 
+/*  
+void FlightControllerPlugin::UpdateEnd()
+{
+  gzdbg << "End update"<< std::endl;
+
+}
+*/
+
 void FlightControllerPlugin::EscSensorCallback(EscSensorPtr &_escSensor)
 {
+  boost::mutex::scoped_lock lock(g_CallbackMutex);
+
+  //this->statePkt.escTemperature[_escSensor->id()] = _escSensor->temperature();
   gzdbg << "Receiving esc sensor " << _escSensor->id() << std::endl;
+  this->callbackCount++;
+  this->callbackCondition.notify_all();
 
 }
 void FlightControllerPlugin::ImuCallback(ImuPtr &_imu)
 {
+  boost::mutex::scoped_lock lock(g_CallbackMutex);
+  gzdbg << "Received IMU" << std::endl;
+
+  this->statePkt.imuAngularVelocityRPY[0] = _imu->angular_velocity().x();
+  this->statePkt.imuAngularVelocityRPY[1] = _imu->angular_velocity().y();
+  this->statePkt.imuAngularVelocityRPY[2] = _imu->angular_velocity().z();
+
+  this->statePkt.imuOrientationQuat[0] = _imu->orientation().w();
+  this->statePkt.imuOrientationQuat[1] = _imu->orientation().x();
+  this->statePkt.imuOrientationQuat[2] = _imu->orientation().y();
+  this->statePkt.imuOrientationQuat[3] = _imu->orientation().z();
+
+  this->statePkt.imuLinearAccelerationXYZ[0] = _imu->linear_acceleration().x();
+  this->statePkt.imuLinearAccelerationXYZ[1] = _imu->linear_acceleration().y();
+  this->statePkt.imuLinearAccelerationXYZ[2] = _imu->linear_acceleration().z();
+
+  this->callbackCount++;
+  this->callbackCondition.notify_all();
 
 }
 void FlightControllerPlugin::ProcessSDF(sdf::ElementPtr _sdf)
@@ -368,6 +411,10 @@ void FlightControllerPlugin::LoopThread()
 		
 		//Try reading from the socket, if a packet is
 		//available update the rotors
+    {
+      boost::mutex::scoped_lock lock2(g_CallbackMutex);
+      this->callbackCount = -1 * (1 + this->numActuators);
+    }
 		bool received = this->ReceiveMotorCommand();
 
 		if (received){
@@ -407,6 +454,7 @@ void FlightControllerPlugin::LoopThread()
 			if (this->aircraftOnline)
 			{
         cmd_msgs::msgs::MotorCommand cmd;
+        gzdbg << "Sending motor commands to digital twin" << std::endl;
         for (unsigned int i = 0; i < this->numActuators; i++)
         {
           //gzdbg << i << "=" << this->motor[i] << std::endl;
@@ -422,10 +470,32 @@ void FlightControllerPlugin::LoopThread()
 		} else {
 			//gzerr << "Command not received t=" << this->_world->SimTime().Double() << "\n";
 		}	
-		if (this->aircraftOnline)
+
+    this->statePkt.timestamp = this->world->SimTime().Double();
+
+    if (received)
+    {
+      this->statePkt.status_code = 1;
+    } 
+    else 
+    {
+      this->statePkt.status_code = 0;
+    }
+
+		if (this->aircraftOnline && !this->resetWorld)
 		{
+      boost::mutex::scoped_lock lock2(g_CallbackMutex);
+      while (this->callbackCount < 0)
+      {
+        this->callbackCondition.wait(lock2);
+      }
+      gzdbg << "Sending state"<<std::endl;
 			this->SendState(received);
-		}
+		} 
+    else 
+    {
+			this->SendState(received);
+    }
 
 	}
 }
@@ -569,13 +639,12 @@ bool FlightControllerPlugin::ReceiveMotorCommand()
     //std::cout "Seq " << pkt.seq << "\n";
 
     // compute command based on requested motorSpeed
-    //gzdbg << "[fc] Received motor command: ";
+    gzdbg << "[fc] Received motor command: ";
     for (unsigned int i = 0; i < this->numActuators; i++)
     {
       if (i < MAX_MOTORS)
       {
-        // std::cout << i << ": " << pkt.motorSpeed[i] << "\n";
-     //     std::cout << pkt.motor[i] << " ";
+          std::cout << pkt.motor[i] << " ";
          this->motor[i] = pkt.motor[i];
       }
       else
@@ -583,9 +652,9 @@ bool FlightControllerPlugin::ReceiveMotorCommand()
         gzerr << "too many motors, skipping [" << i
               << " > " << MAX_MOTORS << "].\n";
       }
-	  commandProcessed = TRUE;
     }
-    //std::cout << std::endl;
+	  commandProcessed = TRUE;
+    std::cout << std::endl;
 
       if (pkt.resetWorld == 1) {
           this->resetWorld = TRUE;
@@ -599,21 +668,64 @@ bool FlightControllerPlugin::ReceiveMotorCommand()
 /////////////////////////////////////////////////
 void FlightControllerPlugin::SendState(bool motorCommandProcessed) const
 {
+  /* 
   StatePacket pkt;
+  pkt.timestamp = 0.0;
+  pkt.imuAngularVelocityRPY[0] = 0.0;
+  pkt.imuAngularVelocityRPY[1] = 0.0;
+  pkt.imuAngularVelocityRPY[2] = 0.0;
 
-  pkt.timestamp = this->world->SimTime().Double();
+  pkt.imuLinearAccelerationXYZ[0] = 0.0;
+  pkt.imuLinearAccelerationXYZ[1] = 0.0;
+  pkt.imuLinearAccelerationXYZ[2] = 0.0;
 
-  if (motorCommandProcessed){
-	  pkt.status_code = 1;
-  } else {
-	  pkt.status_code = 0;
-  }
+  pkt.imuOrientationQuat[0] = 0.0;
+  pkt.imuOrientationQuat[1] = 0.0;
+  pkt.imuOrientationQuat[2] = 0.0;
+  pkt.imuOrientationQuat[3] = 0.0;
 
+  pkt.velocityXYZ[0] = 0.0;
+  pkt.velocityXYZ[1] = 0.0;
+  pkt.velocityXYZ[2] = 0.0;
+
+  pkt.positionXYZ[0] = 0.0;
+  pkt.positionXYZ[1] = 0.0;
+  pkt.positionXYZ[2] = 0.0;
+  pkt.motorVelocity[0] = 0.0;
+  pkt.motorVelocity[1] = 0.0;
+  pkt.motorVelocity[2] = 0.0;
+  pkt.motorVelocity[3] = 0.0;
+
+  pkt.status_code = 1;
+
+  pkt.escTemperature.reserve(4);
+  pkt.escTemperature[0] = 1;
+  pkt.escTemperature[1] = 2;
+  pkt.escTemperature[2] = 2;
+  pkt.escTemperature[3] = 4;
+  */
+
+  GOOGLE_PROTOBUF_VERIFY_VERSION;
+
+  gymfc::msgs::State state;
+  state.set_sim_time(7.0f);
+  state.set_test_string("hello world");
+  std::string buf;
+  state.SerializeToString(&buf);
+
+  gzdbg << " Buf start" << buf.data() << "end" << std::endl;
+  gzdbg << " Buf length " << buf.size() << std::endl;
+
+  /*  
   ::sendto(this->handle,
            reinterpret_cast<raw_type *>(&pkt),
            sizeof(pkt), 0,
 		   (struct sockaddr *)&this->remaddr, this->remaddrlen); 
-   //        (struct sockaddr *)&sockaddr, sizeof(sockaddr));
+       */
+  ::sendto(this->handle,
+           buf.data(),
+           buf.size(), 0,
+		   (struct sockaddr *)&this->remaddr, this->remaddrlen); 
 }
 
 
