@@ -1,0 +1,20 @@
+
+syntax = "proto2";
+package gymfc.msgs;
+
+/* Reinforcement learning environment action represents the control signals
+to the aircraft actuators and additional information */
+
+message Action 
+{
+  repeated float  motor = 1 [packed = true];
+
+  // By default everytime an action is sent to the environment the world is 
+  // incremented a single step. This behavior can be overriden to reset the 
+  // world at the start of a task.
+  enum WorldControl {
+    STEP = 0;
+    RESET = 1;
+  }
+  optional WorldControl world_control = 2 [default = STEP];
+}
