@@ -19,11 +19,33 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='State.proto',
   package='gymfc.msgs',
   syntax='proto2',
-  serialized_pb=_b('\n\x0bState.proto\x12\ngymfc.msgs\".\n\x05State\x12\x10\n\x08sim_time\x18\x01 \x02(\x02\x12\x13\n\x0btest_string\x18\x02 \x02(\t')
+  serialized_pb=_b('\n\x0bState.proto\x12\ngymfc.msgs\"\x81\x03\n\x05State\x12\x10\n\x08sim_time\x18\x01 \x02(\x02\x12$\n\x18imu_angular_velocity_rpy\x18\x02 \x03(\x02\x42\x02\x10\x01\x12\'\n\x1bimu_linear_acceleration_xyz\x18\x03 \x03(\x02\x42\x02\x10\x01\x12 \n\x14imu_orientation_quat\x18\x04 \x03(\x02\x42\x02\x10\x01\x12&\n\x1a\x65sc_motor_angular_velocity\x18\x05 \x03(\x02\x42\x02\x10\x01\x12\x1b\n\x0f\x65sc_temperature\x18\x06 \x03(\x02\x42\x02\x10\x01\x12\x17\n\x0b\x65sc_current\x18\x07 \x03(\x02\x42\x02\x10\x01\x12\x17\n\x0b\x65sc_voltage\x18\x08 \x03(\x02\x42\x02\x10\x01\x12\x14\n\x0cvbat_voltage\x18\t \x01(\x02\x12\x14\n\x0cvbat_current\x18\n \x01(\x02\x12\x31\n\x0bstatus_code\x18\x0b \x02(\x0e\x32\x1c.gymfc.msgs.State.StatusCode\"\x1f\n\nStatusCode\x12\x06\n\x02OK\x10\x00\x12\t\n\x05\x45RROR\x10\x01')
 )
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 
+
+_STATE_STATUSCODE = _descriptor.EnumDescriptor(
+  name='StatusCode',
+  full_name='gymfc.msgs.State.StatusCode',
+  filename=None,
+  file=DESCRIPTOR,
+  values=[
+    _descriptor.EnumValueDescriptor(
+      name='OK', index=0, number=0,
+      options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='ERROR', index=1, number=1,
+      options=None,
+      type=None),
+  ],
+  containing_type=None,
+  options=None,
+  serialized_start=382,
+  serialized_end=413,
+)
+_sym_db.RegisterEnumDescriptor(_STATE_STATUSCODE)
 
 
 _STATE = _descriptor.Descriptor(
@@ -41,9 +63,72 @@ _STATE = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='test_string', full_name='gymfc.msgs.State.test_string', index=1,
-      number=2, type=9, cpp_type=9, label=2,
-      has_default_value=False, default_value=_b("").decode('utf-8'),
+      name='imu_angular_velocity_rpy', full_name='gymfc.msgs.State.imu_angular_velocity_rpy', index=1,
+      number=2, type=2, cpp_type=6, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=_descriptor._ParseOptions(descriptor_pb2.FieldOptions(), _b('\020\001'))),
+    _descriptor.FieldDescriptor(
+      name='imu_linear_acceleration_xyz', full_name='gymfc.msgs.State.imu_linear_acceleration_xyz', index=2,
+      number=3, type=2, cpp_type=6, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=_descriptor._ParseOptions(descriptor_pb2.FieldOptions(), _b('\020\001'))),
+    _descriptor.FieldDescriptor(
+      name='imu_orientation_quat', full_name='gymfc.msgs.State.imu_orientation_quat', index=3,
+      number=4, type=2, cpp_type=6, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=_descriptor._ParseOptions(descriptor_pb2.FieldOptions(), _b('\020\001'))),
+    _descriptor.FieldDescriptor(
+      name='esc_motor_angular_velocity', full_name='gymfc.msgs.State.esc_motor_angular_velocity', index=4,
+      number=5, type=2, cpp_type=6, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=_descriptor._ParseOptions(descriptor_pb2.FieldOptions(), _b('\020\001'))),
+    _descriptor.FieldDescriptor(
+      name='esc_temperature', full_name='gymfc.msgs.State.esc_temperature', index=5,
+      number=6, type=2, cpp_type=6, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=_descriptor._ParseOptions(descriptor_pb2.FieldOptions(), _b('\020\001'))),
+    _descriptor.FieldDescriptor(
+      name='esc_current', full_name='gymfc.msgs.State.esc_current', index=6,
+      number=7, type=2, cpp_type=6, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=_descriptor._ParseOptions(descriptor_pb2.FieldOptions(), _b('\020\001'))),
+    _descriptor.FieldDescriptor(
+      name='esc_voltage', full_name='gymfc.msgs.State.esc_voltage', index=7,
+      number=8, type=2, cpp_type=6, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=_descriptor._ParseOptions(descriptor_pb2.FieldOptions(), _b('\020\001'))),
+    _descriptor.FieldDescriptor(
+      name='vbat_voltage', full_name='gymfc.msgs.State.vbat_voltage', index=8,
+      number=9, type=2, cpp_type=6, label=1,
+      has_default_value=False, default_value=float(0),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='vbat_current', full_name='gymfc.msgs.State.vbat_current', index=9,
+      number=10, type=2, cpp_type=6, label=1,
+      has_default_value=False, default_value=float(0),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='status_code', full_name='gymfc.msgs.State.status_code', index=10,
+      number=11, type=14, cpp_type=8, label=2,
+      has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
@@ -52,6 +137,7 @@ _STATE = _descriptor.Descriptor(
   ],
   nested_types=[],
   enum_types=[
+    _STATE_STATUSCODE,
   ],
   options=None,
   is_extendable=False,
@@ -59,10 +145,12 @@ _STATE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=27,
-  serialized_end=73,
+  serialized_start=28,
+  serialized_end=413,
 )
 
+_STATE.fields_by_name['status_code'].enum_type = _STATE_STATUSCODE
+_STATE_STATUSCODE.containing_type = _STATE
 DESCRIPTOR.message_types_by_name['State'] = _STATE
 
 State = _reflection.GeneratedProtocolMessageType('State', (_message.Message,), dict(
@@ -73,4 +161,18 @@ State = _reflection.GeneratedProtocolMessageType('State', (_message.Message,), d
 _sym_db.RegisterMessage(State)
 
 
+_STATE.fields_by_name['imu_angular_velocity_rpy'].has_options = True
+_STATE.fields_by_name['imu_angular_velocity_rpy']._options = _descriptor._ParseOptions(descriptor_pb2.FieldOptions(), _b('\020\001'))
+_STATE.fields_by_name['imu_linear_acceleration_xyz'].has_options = True
+_STATE.fields_by_name['imu_linear_acceleration_xyz']._options = _descriptor._ParseOptions(descriptor_pb2.FieldOptions(), _b('\020\001'))
+_STATE.fields_by_name['imu_orientation_quat'].has_options = True
+_STATE.fields_by_name['imu_orientation_quat']._options = _descriptor._ParseOptions(descriptor_pb2.FieldOptions(), _b('\020\001'))
+_STATE.fields_by_name['esc_motor_angular_velocity'].has_options = True
+_STATE.fields_by_name['esc_motor_angular_velocity']._options = _descriptor._ParseOptions(descriptor_pb2.FieldOptions(), _b('\020\001'))
+_STATE.fields_by_name['esc_temperature'].has_options = True
+_STATE.fields_by_name['esc_temperature']._options = _descriptor._ParseOptions(descriptor_pb2.FieldOptions(), _b('\020\001'))
+_STATE.fields_by_name['esc_current'].has_options = True
+_STATE.fields_by_name['esc_current']._options = _descriptor._ParseOptions(descriptor_pb2.FieldOptions(), _b('\020\001'))
+_STATE.fields_by_name['esc_voltage'].has_options = True
+_STATE.fields_by_name['esc_voltage']._options = _descriptor._ParseOptions(descriptor_pb2.FieldOptions(), _b('\020\001'))
 # @@protoc_insertion_point(module_scope)
