@@ -18,51 +18,36 @@ import configparser
 import json
 logger = logging.getLogger("gymfc")
 from gymfc.msgs import State_pb2 
+from gymfc.msgs import Action_pb2 
 
-class PWMPacket:
-    def __init__(self, pwm_values, motor_mapping, reset=False):
+class ActionPacket:
+    def __init__(self, motor, world_control=Action_pb2.Action.STEP):
         """ Initialize a PWM motor packet 
 
         Args:
-            pwm_values (np.array): an array of PWM values in the range [0, 1000] 
-            reset: True if the simulation should be reset
+            motor (np.array): an array of PWM values in the range [0, 1000] 
+            reset (boolean): True if the simulation should be reset
         """
-        self.pwm_values = pwm_values
-        self.motor_mapping = motor_mapping
-        self.reset = int(reset)
+        self.motor = motor 
+        self.ac = Action_pb2.Action()
+        print ("Sending motor ", motor.tolist())
+        self.ac.motor.extend(motor.tolist())
+        self.ac.world_control = world_control
 
-    def encode(self, motor_map = []):
-        """  Create and return a PWM packet 
-        
-        Args:
-            motor_map (array): 
-        """
-        scale = 1000.0 # Scale for the digital twin to [0, 1]
-
-        # There is a different motor mapping for the digital twin.
-        # This doesnt matter when training, the agent doesn't care,
-        # this only matters for when transferring to hardware.
-        motor_velocities = [self.pwm_values[self.motor_mapping[i]] / scale \
-                            for i in range(len(self.pwm_values))]
-
-        # Put the integer first, because of the struct alignment in the 
-        # Gazebo plugin. Send this as an int incase we later want to have 
-        # this represent other modes we want to control in the simulator
-        return struct.pack("<i{}f".format(len(motor_velocities)), self.reset, *motor_velocities)
+    def encode(self):
+        """  Encode packet data"""
+        msg = self.ac.SerializeToString() 
+        return msg
 
     def __str__(self):
-        return str(self.pwm)
+        return str(self.motor)
 
-class FDMPacket:
-    def __init__(self, motor_mapping):
-        self.motor_mapping = motor_mapping
+class StatePacket:
 
     def decode(self, data):
-        print ("Data=", data)
         state = State_pb2.State()
         state.ParseFromString(data)
-        print ("Sim time=", state.sim_time)
-        print ("test string=", state.test_string)
+        return state
 
 
     def decode2(self, data):
@@ -103,7 +88,7 @@ class ESCClientProtocol:
     def connection_made(self, transport):
         self.transport = transport
 
-    async def write_motor(self, motor_values, reset=False):
+    async def write_motor(self, motor_values, world_control=Action_pb2.Action.STEP):
         """ Write the motor values to the ESC and then return 
         the current sensor values and an exception if anything bad happend.
         
@@ -112,7 +97,7 @@ class ESCClientProtocol:
             reset (bool): Reset the simulation world
         """
         self.packet_received = False
-        self.transport.sendto(PWMPacket(motor_values, self.motor_mapping, reset=reset).encode())
+        self.transport.sendto(ActionPacket(motor_values, world_control).encode())
 
         # Pass the exception back if anything bad happens
         while not self.packet_received:
@@ -135,7 +120,7 @@ class ESCClientProtocol:
         # Everything is OK, reset
         self.exception = None
         self.packet_received = True
-        self.obs = FDMPacket(self.motor_mapping).decode(data)
+        self.obs = StatePacket().decode(data)
     
     def connection_lost(self, exc):
         print("Socket closed, stop the event loop")
@@ -249,7 +234,7 @@ class GazeboEnv(gym.Env):
             raise ConfigLoadException(e)
 
         
-    def step_sim(self, action):
+    def step_sim(self, ac):
         """ Take a single step in the simulator and return the current 
         observations.
          
@@ -258,9 +243,9 @@ class GazeboEnv(gym.Env):
         the order [rear_r, front_r, rear_l, font_l]
         """
 
-        return self.loop.run_until_complete(self._step_sim(action))
+        return self.loop.run_until_complete(self._step_sim(ac))
 
-    async def _step_sim(self, action, reset=False):
+    async def _step_sim(self, ac, world_control=Action_pb2.Action.STEP):
         """Complete a single simulation step, return a tuple containing
         the simulation time and the state
 
@@ -268,19 +253,18 @@ class GazeboEnv(gym.Env):
             action (np.array): motor values normalized between [-1:1] in 
         the order [rear_r, front_r, rear_l, font_l]
         """
-        # Convert to motor input to PWM range [0, 1000] to match
-        # Betaflight mixer output
-        pwm_motor_values = [ ((m + 1) * 500) for m in action]
 
         # Packets are sent over UDP so they can be dropped, there is no 
         # gaurentee. First we try and send command. If an error occurs in transition 
         # try again or for some reason something goes wrong in the simualator and 
         # the packet wasnt processsed correctly. 
-        observations = None
+        ob = None
+        ob, e = await self.esc_protocol.write_motor(ac, world_control=world_control)
+        """
         for i in range(self.MAX_CONNECT_TRIES):
-            observations, e = await self.esc_protocol.write_motor(pwm_motor_values, reset=reset)
-            if observations:
-                if observations.status_code == 1: # Process successful
+            ob, e = await self.esc_protocol.write_motor(ac, reset=reset)
+            if ob:
+                if ob.status_code == 1: # Process successful
                     break
                 else:
                     print ("Previous command was not processed, resending pwm=", pwm_motor_values)
@@ -295,8 +279,8 @@ class GazeboEnv(gym.Env):
 
 
         # Make these visible
-        self.omega_actual = observations.angular_velocity_rpy
-        self.sim_time = observations.timestamp 
+        self.omega_actual = ob.angular_velocity_rpy
+        self.sim_time = ob.timestamp 
         # In the event a packet is dropped we could be out of sync. This has only ever been
         # observed when dozens of simulations are run in parellel. We need the speed 
         # of UDP so until this becomes an issue just track how many we suspect were dropped.
@@ -306,7 +290,8 @@ class GazeboEnv(gym.Env):
         self.last_sim_time = self.sim_time 
         self.sim_stats["steps"] += 1
 
-        return observations
+        """
+        return ob
     
     def _signal_handler(self, signal, frame):
         print("Ctrl+C detected, shutting down gazebo and application")
