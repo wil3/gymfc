@@ -31,6 +31,8 @@
 #include "MotorCommand.pb.h"
 #include "EscSensor.pb.h"
 #include "Imu.pb.h"
+#include "State.pb.h"
+#include "Action.pb.h"
 
 #define MAX_MOTORS 255
 #define DIGITAL_TWIN_SDF_ENV "DIGITAL_TWIN_SDF"
@@ -49,51 +51,8 @@ namespace gazebo
 
   typedef const boost::shared_ptr<const sensor_msgs::msgs::Imu> ImuPtr;
   typedef const boost::shared_ptr<const sensor_msgs::msgs::EscSensor> EscSensorPtr;
+  typedef const boost::shared_ptr<const gymfc::msgs::Action> ActionPtr;
 
-/// \brief A servo packet.
-struct ServoPacket
-{
-	/// \brief Flag to indicate the world should be reset
-	int resetWorld;
-	/// \brief Motor control signal [0,1].
-	float motor[MAX_MOTORS];
-
-};
-
-/// \brief State packet that is sent back to the agent
-// XXX Because of struct padding and how this is serialized to bytes must be in multiple of 4? 8?
-struct StatePacket
-{
-  /// \brief packet timestamp
-  double timestamp;
-
-  /// \brief IMU angular velocity
-  double imuAngularVelocityRPY[3];
-
-  /// \brief IMU linear acceleration
-  double imuLinearAccelerationXYZ[3];
-
-  /// \brief IMU quaternion orientation
-  double imuOrientationQuat[4];
-
-  /// \brief Model velocity in NED frame
-  double velocityXYZ[3];
-
-  /// \brief Model position in NED frame
-  double positionXYZ[3];
-
-  double motorVelocity[4];
-  
-  /*
-  
-  double escMotorSpeed[4];
-   */
- // uint32_t iter;
-  uint64_t status_code;
-  
-  std::vector<uint64_t> escTemperature; 
-//  unsigned int seq;
-};
 class FlightControllerPlugin : public WorldPlugin
 {
   /// \brief Constructor.
@@ -114,10 +73,10 @@ class FlightControllerPlugin : public WorldPlugin
   public: ssize_t Recv(void *_buf, const size_t _size, uint32_t _timeoutMs);
 
   /// \brief Receive motor commands from Quadcopter
-  private: bool ReceiveMotorCommand();
+  private: ActionPtr ReceiveAction();
 
   /// \brief Send state to Quadcopter
-  private: void SendState(bool motorCommandProcessed) const;
+  private: void SendState() const;
   //private: void SendState(bool motorCommandProcessed);
 	private: void SoftReset();
 
@@ -166,8 +125,6 @@ class FlightControllerPlugin : public WorldPlugin
 
 	public: socklen_t remaddrlen;
 
-	/// \brief True if world should be reset
-	public: bool resetWorld;
 	/// \brief false before ardupilot controller is online
 	/// to allow gazebo to continue without waiting
 	public: bool aircraftOnline;
@@ -183,7 +140,6 @@ class FlightControllerPlugin : public WorldPlugin
 	/// before marking Quadcopter offline
 	public: int connectionTimeoutMaxCount;
 
-  private: float motor[MAX_MOTORS];
   private: std::string cmdPubTopic;
   private: std::string imuSubTopic;
   private: std::string escSubTopic;
@@ -199,12 +155,11 @@ class FlightControllerPlugin : public WorldPlugin
   //private: transport::SubscriberPtr escSub;
   private: transport::SubscriberPtr escSub[MAX_MOTORS];
   private: cmd_msgs::msgs::MotorCommand cmdMsg;
-  private: unsigned long numCallbacks = 0;
-  private: unsigned long callbackCount = 0;
+  private: int callbackCount;
 
   private: boost::condition_variable callbackCondition;
 
-  private: StatePacket statePkt;
+  private: gymfc::msgs::State statePkt;
   };
 }
 #endif
