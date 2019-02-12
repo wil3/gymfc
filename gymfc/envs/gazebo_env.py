@@ -22,15 +22,14 @@ from gymfc.msgs import Action_pb2
 
 class ActionPacket:
     def __init__(self, motor, world_control=Action_pb2.Action.STEP):
-        """ Initialize a PWM motor packet 
-
+        """
         Args:
             motor (np.array): an array of PWM values in the range [0, 1000] 
-            reset (boolean): True if the simulation should be reset
+            world_control: 
         """
         self.motor = motor 
         self.ac = Action_pb2.Action()
-        print ("Sending motor ", motor.tolist())
+        #print ("Sending motor ", motor.tolist())
         self.ac.motor.extend(motor.tolist())
         self.ac.world_control = world_control
 
@@ -47,54 +46,26 @@ class StatePacket:
     def decode(self, data):
         state = State_pb2.State()
         state.ParseFromString(data)
+        #print ("State2=", state)
         return state
 
+class ActionProtocol:
 
-    def decode2(self, data):
-        print ("Receiving data of size ", len(data))
-        print ("Data=", data)
-        #unpacked = np.array(list(struct.unpack("<d3d3d4d3d3d4dQ", data)))
-        unpacked = np.array(list(struct.unpack("<d3d3d4d3d3d4d4dQ", data)))
-        self.timestamp = unpacked[0]
-        # All angular velocities from gazebo are in radians/s unless otherwise stated
-        self.angular_velocity_rpy = unpacked[1:4]
-        self.angular_velocity_rpy[1] *= -1
-        self.angular_velocity_rpy[2] *= -1
-
-        self.linear_acceleration_xyz = unpacked[4:7]
-        self.orientation_quat = unpacked[7:11]
-        self.velocity_xyz = unpacked[11:14]
-        self.position_xyz = unpacked[14:17]
-        #FIXME move this to the end because its variable
-        raw_motor_velocities = unpacked[17:21]
-        self.motor_velocity = [raw_motor_velocities[self.motor_mapping[i]] 
-                            for i in range(len(raw_motor_velocities))]
-
-
-        self.status_code = unpacked[21]
-        unpacked.flags.writeable = False # Sensor values are readonly 
-        return self
-
-
-class ESCClientProtocol:
-
-    def __init__(self, motor_mapping):
+    def __init__(self):
         """ Initialize the electronic speed controller client """
-        self.motor_mapping = motor_mapping
-        self.obs = None
+        self.state_pkt = None
         self.packet_received = False
         self.exception = None
 
     def connection_made(self, transport):
         self.transport = transport
 
-    async def write_motor(self, motor_values, world_control=Action_pb2.Action.STEP):
+    async def write(self, motor_values, world_control=Action_pb2.Action.STEP):
         """ Write the motor values to the ESC and then return 
         the current sensor values and an exception if anything bad happend.
         
         Args:
             motor_values (np.array): motor values in range [0, 1000]
-            reset (bool): Reset the simulation world
         """
         self.packet_received = False
         self.transport.sendto(ActionPacket(motor_values, world_control).encode())
@@ -105,7 +76,7 @@ class ESCClientProtocol:
                 return (None, self.exception)
             await asyncio.sleep(0.001)
 
-        return (self.obs, None)
+        return (self.state_pkt, None)
 
     def error_received(self, exc):
         self.exception = exc
@@ -120,7 +91,7 @@ class ESCClientProtocol:
         # Everything is OK, reset
         self.exception = None
         self.packet_received = True
-        self.obs = StatePacket().decode(data)
+        self.state_pkt = StatePacket().decode(data)
     
     def connection_lost(self, exc):
         print("Socket closed, stop the event loop")
@@ -128,7 +99,7 @@ class ESCClientProtocol:
         loop.stop()
 
 class GazeboEnv(gym.Env):
-    MAX_CONNECT_TRIES = 20
+    MAX_CONNECT_TRIES = 60
     GYMFC_CONFIG_ENV_VAR = "GYMFC_CONFIG"
 
     def __init__(self):
@@ -154,6 +125,7 @@ class GazeboEnv(gym.Env):
         action_high = np.array([self.output_range[1]] * self.motor_count)
         self.action_space = spaces.Box(action_low, action_high, dtype=np.float32)
 
+        self.rate_desired = self.sample_target().copy()
         state = self.state()
         self.observation_space = spaces.Box(-np.inf, np.inf, shape=state.shape, dtype=np.float32) 
 
@@ -166,13 +138,56 @@ class GazeboEnv(gym.Env):
 
         # Connect to the Aircraft plugin
         writer = self.loop.create_datagram_endpoint(
-            lambda: ESCClientProtocol(self.motor_mapping),
+            lambda: ActionProtocol(),
             remote_addr=(self.host, self.aircraft_port))
-        _, self.esc_protocol = self.loop.run_until_complete(writer) 
+        _, self.ac_protocol = self.loop.run_until_complete(writer) 
 
         self._start_sim()
 
     def load_config(self):
+        if self.GYMFC_CONFIG_ENV_VAR not in os.environ:
+            message = (
+                "Environment variable {} not set. " +
+                "Before running the environment please execute, " + 
+                "'export {}=path/to/config/file' " +
+                "or add the variable to your .bashrc."
+            ).format(self.GYMFC_CONFIG_ENV_VAR, self.GYMFC_CONFIG_ENV_VAR)
+            raise ConfigLoadException(message)
+
+        config_path = os.environ[self.GYMFC_CONFIG_ENV_VAR]
+        if not os.path.isfile(config_path):
+            message = "Config file '{}' does not exist.".format(config_path)
+            raise ConfigLoadException(message)
+
+        with open(config_path, "r") as f:
+            cfg = json.load(f)
+
+            # Gazebo configuration
+            self.setup_file = cfg["gazebo"]["setup_file"]
+            self.world = cfg["gazebo"]["world"]
+            self.host = cfg["gazebo"]["network"]["hostname"]
+
+            self.gz_port = self._get_open_port(
+                self.np_random.randint(
+                    *cfg["gazebo"]["network"]["gzserver"]["port_range"])
+            )
+            self.aircraft_port = self._get_open_port(
+                self.np_random.randint(
+                    *cfg["gazebo"]["network"]["fc"]["port_range"])
+            )
+
+            # Env
+            self.omega_bounds = cfg["env"]["target_angular_velocity_range"]
+            self.output_range = cfg["env"]["agent_output_range"]
+
+            # Digital twin
+            self.aircraft_model_dir = cfg["digital_twin"]["model_dir"]
+            self.aircraft_model = cfg["digital_twin"]["model"]
+            self.aircraft_plugin_dir = cfg["digital_twin"]["plugin_dir"]
+            self.motor_count = cfg["digital_twin"]["motor_count"]
+            self.sensor_cfg = cfg["digital_twin"]["sensors"]
+
+    def load_config2(self):
         if self.GYMFC_CONFIG_ENV_VAR not in os.environ:
             message = (
                 "Environment variable {} not set. " +
@@ -194,6 +209,7 @@ class GazeboEnv(gym.Env):
             gz = config["Gazebo"]
             ac = config["Aircraft"]
             train = config["Training"]
+            sensor = config["Sensors"]
 
             # Gazebo specific 
             self.setup_file = gz["SetupFile"]
@@ -230,6 +246,9 @@ class GazeboEnv(gym.Env):
             self.motor_mapping = json.loads(ac["MotorMapping"])
             self.output_range = json.loads(ac["ControlSignalOutputRange"])
 
+            # Sensors
+            #
+
         except Exception as e: # Something went wong in the parser
             raise ConfigLoadException(e)
 
@@ -245,6 +264,29 @@ class GazeboEnv(gym.Env):
 
         return self.loop.run_until_complete(self._step_sim(ac))
 
+
+    def _state_to_ob(self):
+        """ Convert the state returned from the digital twin to a single 
+        array that can be used as the observation for neural network input """
+        # TODO Linear rescale?
+        # https://stackoverflow.com/questions/5294955/how-to-scale-down-a-range-of-numbers-with-a-known-min-and-max-value
+        #
+        # Special case first
+        ob = self.rate_error.tolist()
+        # Now rest of the sensors
+        for sensor in self.sensor_cfg:
+            if hasattr(self.sensor_values, sensor["name"]):
+                val = list(getattr(self.sensor_values, sensor["name"]))
+                # Scale before adding
+                if "range" in sensor:
+                    distance = sensor["range"][1] - sensor["range"][0]
+                    ob += (np.array(val)/distance).tolist()
+                else:
+                    ob += val
+            else:
+                raise Exception("Could not find sensor ", sensor["name"], " in State packet.")
+
+        # Optional fields
     async def _step_sim(self, ac, world_control=Action_pb2.Action.STEP):
         """Complete a single simulation step, return a tuple containing
         the simulation time and the state
@@ -258,11 +300,23 @@ class GazeboEnv(gym.Env):
         # gaurentee. First we try and send command. If an error occurs in transition 
         # try again or for some reason something goes wrong in the simualator and 
         # the packet wasnt processsed correctly. 
-        ob = None
-        ob, e = await self.esc_protocol.write_motor(ac, world_control=world_control)
-        """
         for i in range(self.MAX_CONNECT_TRIES):
-            ob, e = await self.esc_protocol.write_motor(ac, reset=reset)
+            self.sensor_values, e = await self.ac_protocol.write(ac, world_control=world_control)
+            #print ("State=", self.sensor_values)
+            if self.sensor_values:
+                break
+            print ("Waiting for state")
+            await asyncio.sleep(1)
+
+        # Handle some special cases
+        self.sim_time = np.around(self.sensor_values.sim_time , 3)
+        self.rate_actual = np.array(list(self.sensor_values.imu_angular_velocity_rpy))
+        #print ("Actual rate=", self.rate_actual)
+        # Update the error
+        self.rate_error = self.rate_desired - self.rate_actual
+
+        """
+            ob, e = await self.ac_protocol.write(ac, reset=reset)
             if ob:
                 if ob.status_code == 1: # Process successful
                     break
@@ -281,6 +335,7 @@ class GazeboEnv(gym.Env):
         # Make these visible
         self.omega_actual = ob.angular_velocity_rpy
         self.sim_time = ob.timestamp 
+        """
         # In the event a packet is dropped we could be out of sync. This has only ever been
         # observed when dozens of simulations are run in parellel. We need the speed 
         # of UDP so until this becomes an issue just track how many we suspect were dropped.
@@ -290,8 +345,7 @@ class GazeboEnv(gym.Env):
         self.last_sim_time = self.sim_time 
         self.sim_stats["steps"] += 1
 
-        """
-        return ob
+        return self._state_to_ob()
     
     def _signal_handler(self, signal, frame):
         print("Ctrl+C detected, shutting down gazebo and application")
@@ -432,8 +486,8 @@ self.aircraft_plugin_dir)
 
     def reset(self):
         self.last_sim_time = -self.stepsize
-        self.loop.run_until_complete(self._step_sim(self.action_space.low, reset=True))
-        self.omega_target = self.sample_target().copy()
+        self.loop.run_until_complete(self._step_sim(self.action_space.low,world_control=Action_pb2.Action.RESET))
+        self.rate_desired = self.sample_target().copy()
         assert np.isclose(self.sim_time, 0.0, 1e-6), "sim time after reset is incorrect, {} ".format(self.sim_time)
         return self.state()
 
