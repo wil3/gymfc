@@ -42,6 +42,7 @@ typedef SSIZE_T ssize_t;
 #include <string>
 #include <vector>
 #include <sdf/sdf.hh>
+#include <boost/algorithm/string.hpp>
 #include <ignition/math/Filter.hh>
 #include <gazebo/common/Assert.hh>
 #include <gazebo/common/Plugin.hh>
@@ -106,6 +107,7 @@ boost::mutex g_CallbackMutex;
 FlightControllerPlugin::FlightControllerPlugin() 
 {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
+
   // socket
   this->handle = socket(AF_INET, SOCK_DGRAM /*SOCK_STREAM*/, 0);
   #ifndef _WIN32
@@ -116,38 +118,6 @@ FlightControllerPlugin::FlightControllerPlugin()
   setsockopt(this->handle, IPPROTO_TCP, TCP_NODELAY,
       reinterpret_cast<const char *>(&one), sizeof(one));
 
-  // Default port can be read in from an environment variable
-  // This allows multiple instances to be run
-  int port = 9002;
-  if(const char* env_p =  std::getenv("SITL_PORT")){
-		  port = std::stoi(env_p);
-  }
-  gzdbg << "Binding on port " << port << "\n";
-  if (!this->Bind("127.0.0.1", port))
-  {
-    gzerr << "failed to bind with 127.0.0.1:" << port <<", aborting plugin.\n";
-    return;
-  }
-
-  if(const char* env_p =  std::getenv(DIGITAL_TWIN_SDF_ENV)){
-    this->digitalTwinSDF = env_p;
-  } else {
-    gzerr << "Could not load digital twin model from environment variable " << DIGITAL_TWIN_SDF_ENV << "\n";
-    return;
-  }
-
-  if(const char* env_p =  std::getenv(NUM_MOTORS_ENV)){
-    this->numActuators = std::stoi(env_p);
-  } else {
-    gzerr << "Environment variable " << NUM_MOTORS_ENV << " not set.\n";
-    return;
-  }
-
-  //this->statePkt.escTemperature.reserve(this->numActuators);
-
-  this->aircraftOnline = false;
-
-  this->connectionTimeoutCount = 0;
 
   setsockopt(this->handle, SOL_SOCKET, SO_REUSEADDR,
      reinterpret_cast<const char *>(&one), sizeof(one));
@@ -178,62 +148,153 @@ void FlightControllerPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf
   this->world = _world;
   this->ProcessSDF(_sdf);
 
+  this->LoadVars();
+  this->CalculateCallbackCount();
+
   this->nodeHandle = transport::NodePtr(new transport::Node());
   this->nodeHandle->Init(this->robotNamespace);
 
-  //Subscribe to all the sensors
-  this->imuSub = this->nodeHandle->Subscribe<sensor_msgs::msgs::Imu>(this->imuSubTopic, &FlightControllerPlugin::ImuCallback, this);
-
-  //Each defined motor will have a unique index, since they are indpendent they must come in 
-  //as separate messages
-  for (unsigned int i = 0; i < this->numActuators; i++)
+  //Subscribe to all the sensors that are
+  //enabled
+  for (auto  sensor : this->supportedSensors)
   {
-    this->escSub[i] = this->nodeHandle->Subscribe<sensor_msgs::msgs::EscSensor>(this->escSubTopic + "/" + std::to_string(i) , &FlightControllerPlugin::EscSensorCallback, this);
+    switch(sensor)
+    {
+      case IMU:
+        this->imuSub = this->nodeHandle->Subscribe<sensor_msgs::msgs::Imu>(this->imuSubTopic, &FlightControllerPlugin::ImuCallback, this);
+        break;
+      case ESC:
+        //Each defined motor will have a unique index, since they are indpendent they must come in 
+        //as separate messages
+        for (unsigned int i = 0; i < this->numActuators; i++)
+        {
+          this->escSub.push_back(this->nodeHandle->Subscribe<sensor_msgs::msgs::EscSensor>(this->escSubTopic + "/" + std::to_string(i) , &FlightControllerPlugin::EscSensorCallback, this));
+        }
+        break;
+    }
   }
-  //this->escSub = this->nodeHandle->Subscribe<sensor_msgs::msgs::EscSensor>("/aircraft/sensor/esc/0", &FlightControllerPlugin::EscSensorCallback, this);
+  this->InitState();
 
   this->cmdPub = this->nodeHandle->Advertise<cmd_msgs::msgs::MotorCommand>(this->cmdPubTopic);
-
-  /* 
-  this->updateConnection = event::Events::ConnectWorldUpdateEnd(
-       std::bind(&FlightControllerPlugin::UpdateEnd, this));
-       */
   // Force pause because we drive the simulation steps
   this->world->SetPaused(TRUE);
 
+  this->callbackLoopThread = boost::thread( boost::bind( &FlightControllerPlugin::LoopThread, this) );
+}
+bool FlightControllerPlugin::SensorEnabled(Sensors _sensor)
+{
+  for (auto  sensor : this->supportedSensors)
+  {
+    if (sensor == _sensor)
+    {
+      return true;
+    }
+  }
+  return false;
 
-  // Initialize the state
+}
+void FlightControllerPlugin::LoadVars()
+{
+
+  //XXX This is getting messy, if there is anything the plugin needs
+  //we need to switch to a config file
+
+  // Default port can be read in from an environment variable
+  // This allows multiple instances to be run
+  int port = 9002;
+  if(const char* env_p =  std::getenv(ENV_SITL_PORT))
+  {
+		  port = std::stoi(env_p);
+  }
+  gzdbg << "Binding on port " << port << "\n";
+  if (!this->Bind("127.0.0.1", port))
+  {
+    gzerr << "failed to bind with 127.0.0.1:" << port <<", aborting plugin.\n";
+    return;
+  }
+
+  if(const char* env_p =  std::getenv(ENV_DIGITAL_TWIN_SDF))
+  {
+    this->digitalTwinSDF = env_p;
+  } else 
+  {
+    gzerr << "Could not load digital twin model from environment variable " << ENV_DIGITAL_TWIN_SDF << "\n";
+    return;
+  }
+
+  if(const char* env_p =  std::getenv(ENV_NUM_MOTORS))
+  {
+    this->numActuators = std::stoi(env_p);
+  } else 
+  {
+    gzerr << "Environment variable " << ENV_NUM_MOTORS << " not set.\n";
+    return;
+  }
+
+  if(const char* env_p =  std::getenv(ENV_SUPPORTED_SENSORS)) 
+  {
+    std::vector<std::string> results;
+    boost::split(results, env_p, [](char c){return c == ',';});
+    for (auto  s : results) 
+    {
+      if (boost::iequals(s, "imu"))
+      {
+        this->supportedSensors.push_back(IMU);
+      } 
+      else if (boost::iequals(s, "esc"))
+      {
+        this->supportedSensors.push_back(ESC);
+      }
+
+    }
+  }
+  else 
+  {
+    gzerr << "Environment variable " << ENV_SUPPORTED_SENSORS << " not set.\n";
+    return;
+  }
+
+}
+
+void FlightControllerPlugin::InitState()
+{
+  // Initialize the state of the senors to a value
+  // that reflect the aircraft in an active state thus 
+  // forcing the sensors to be flushed.
   for (unsigned int i = 0; i < 3; i++)
   {
-    this->statePkt.add_imu_angular_velocity_rpy(0);
-    this->statePkt.add_imu_linear_acceleration_xyz(0);
+    this->state.add_imu_angular_velocity_rpy(1);
+    // TODO 
+    this->state.add_imu_linear_acceleration_xyz(0);
   }
   for (unsigned int i = 0; i < 4; i++)
   {
-    this->statePkt.add_imu_orientation_quat(0);
+    // TODO 
+    this->state.add_imu_orientation_quat(0);
   }
 
-  // Controller time control.
-  this->lastControllerUpdateTime = 0;
 
-  this->callbackLoopThread = boost::thread( boost::bind( &FlightControllerPlugin::LoopThread, this) );
+  // ESC sensor 
+  for (unsigned int i = 0; i < this->numActuators; i++)
+  {
+    this->state.add_esc_motor_angular_velocity(100);
+    this->state.add_esc_temperature(10000);
+    this->state.add_esc_current(-1);
+    this->state.add_esc_voltage(-1);
+  }
+
 }
-
-/*  
-void FlightControllerPlugin::UpdateEnd()
-{
-  gzdbg << "End update"<< std::endl;
-
-}
-*/
 
 void FlightControllerPlugin::EscSensorCallback(EscSensorPtr &_escSensor)
 {
   boost::mutex::scoped_lock lock(g_CallbackMutex);
 
-  //this->statePkt.escTemperature[_escSensor->id()] = _escSensor->temperature();
-  //gzdbg << "Receiving esc sensor " << _escSensor->id() << std::endl;
-  this->callbackCount++;
+  uint32_t id = _escSensor->id();  
+  this->state.set_esc_motor_angular_velocity(id, _escSensor->motor_speed());
+  this->state.set_esc_temperature(id, _escSensor->temperature());
+  this->state.set_esc_current(id, _escSensor->current());
+  this->state.set_esc_voltage(id, _escSensor->voltage());
+  this->sensorCallbackCount++;
   this->callbackCondition.notify_all();
 
 }
@@ -242,20 +303,20 @@ void FlightControllerPlugin::ImuCallback(ImuPtr &_imu)
   boost::mutex::scoped_lock lock(g_CallbackMutex);
   //gzdbg << "Received IMU" << std::endl;
 
-  this->statePkt.set_imu_angular_velocity_rpy(0, _imu->angular_velocity().x());
-  this->statePkt.set_imu_angular_velocity_rpy(1, _imu->angular_velocity().y());
-  this->statePkt.set_imu_angular_velocity_rpy(2, _imu->angular_velocity().z());
+  this->state.set_imu_angular_velocity_rpy(0, _imu->angular_velocity().x());
+  this->state.set_imu_angular_velocity_rpy(1, _imu->angular_velocity().y());
+  this->state.set_imu_angular_velocity_rpy(2, _imu->angular_velocity().z());
 
-  this->statePkt.set_imu_orientation_quat(0, _imu->orientation().w());
-  this->statePkt.set_imu_orientation_quat(1, _imu->orientation().x());
-  this->statePkt.set_imu_orientation_quat(2, _imu->orientation().y());
-  this->statePkt.set_imu_orientation_quat(3, _imu->orientation().z());
+  this->state.set_imu_orientation_quat(0, _imu->orientation().w());
+  this->state.set_imu_orientation_quat(1, _imu->orientation().x());
+  this->state.set_imu_orientation_quat(2, _imu->orientation().y());
+  this->state.set_imu_orientation_quat(3, _imu->orientation().z());
 
-  this->statePkt.set_imu_linear_acceleration_xyz(0, _imu->linear_acceleration().x());
-  this->statePkt.set_imu_linear_acceleration_xyz(1, _imu->linear_acceleration().y());
-  this->statePkt.set_imu_linear_acceleration_xyz(2, _imu->linear_acceleration().z());
+  this->state.set_imu_linear_acceleration_xyz(0, _imu->linear_acceleration().x());
+  this->state.set_imu_linear_acceleration_xyz(1, _imu->linear_acceleration().y());
+  this->state.set_imu_linear_acceleration_xyz(2, _imu->linear_acceleration().z());
 
-  this->callbackCount++;
+  this->sensorCallbackCount++;
   this->callbackCondition.notify_all();
 
 }
@@ -280,11 +341,6 @@ void FlightControllerPlugin::ProcessSDF(sdf::ElementPtr _sdf)
   else
     gzerr << "[gazebo_motor_model] Please specify a robotNamespace.\n";
 
-  // Missed update count before we declare aircraftOnline status false
-  getSdfParam<int>(_sdf, "connectionTimeoutMaxCount",
-    this->connectionTimeoutMaxCount, 10);
-  getSdfParam<double>(_sdf, "loopRate",
-    this->loopRate, 100);
 
 }
 
@@ -300,7 +356,7 @@ physics::LinkPtr FlightControllerPlugin::FindLinkByName(physics::ModelPtr _model
 {
   for (auto link : _model->GetLinks())
   {
-    gzdbg << "Link name: " << link->GetName() << std::endl;
+    //gzdbg << "Link name: " << link->GetName() << std::endl;
     if (hasEnding(link->GetName(), _linkName))
     {
       return link;
@@ -312,7 +368,7 @@ physics::LinkPtr FlightControllerPlugin::FindLinkByName(physics::ModelPtr _model
 }
 void FlightControllerPlugin::LoadDigitalTwin()
 {
-  gzdbg << "[fc] Inserting digital twin from, " << this->digitalTwinSDF << ".\n";
+  gzdbg << "Inserting digital twin from, " << this->digitalTwinSDF << ".\n";
    // Load the root digital twin sdf file
   const std::string sdfPath(this->digitalTwinSDF);
 
@@ -333,7 +389,7 @@ void FlightControllerPlugin::LoadDigitalTwin()
   }
   const sdf::ElementPtr modelElement = rootElement->GetElement("model");
   const std::string modelName = modelElement->Get<std::string>("name");
-  gzdbg << "Found " << modelName << " model!" << std::endl;
+  //gzdbg << "Found " << modelName << " model!" << std::endl;
 
   unsigned int startModelCount = this->world->ModelCount();
   //this->world->InsertModelFile(sdfElement);
@@ -355,10 +411,10 @@ void FlightControllerPlugin::LoadDigitalTwin()
     }
   }
   
-  gzdbg << "Num models=" << this->world->ModelCount() << std::endl;
+  //gzdbg << "Num models=" << this->world->ModelCount() << std::endl;
   for (unsigned int i=0; i<this->world->ModelCount(); i++)
   {
-    gzdbg << "Model " << i << ":" << this->world->ModelByIndex(i)->GetScopedName() << std::endl;
+    //gzdbg << "Model " << i << ":" << this->world->ModelByIndex(i)->GetScopedName() << std::endl;
   }
 
   // Now get a pointer to the model
@@ -369,17 +425,12 @@ void FlightControllerPlugin::LoadDigitalTwin()
   }
 
   //Find the base link to attached to the world
-  gzdbg << " Before get link\n";
   physics::LinkPtr digitalTwinCoMLink = FindLinkByName(model, DIGITAL_TWIN_ATTACH_LINK);
   if (!link)
   {
     gzerr << "Could not find link '" << DIGITAL_TWIN_ATTACH_LINK <<" from model " << modelName <<std::endl;
     return;
   } 
-  else
-  {
-      gzdbg << " Link Found\n";
-  }
 
   
   physics::ModelPtr trainingRigModel = this->world->ModelByName(kTrainingRigModelName);
@@ -398,42 +449,35 @@ void FlightControllerPlugin::LoadDigitalTwin()
     gzerr << "Could not create joint"<<std::endl;
     return;
   }
-  /*  
-  joint->SetAnchor(0, ignition::math::Vector3d(0, 0, 0));
-  joint->SetAnchor(1, ignition::math::Vector3d(0, 0, 0));
-  joint->SetAnchor(2, ignition::math::Vector3d(0, 0, 0));
-  */
   joint->Init();
   
   // This is actually great because we've removed the ground plane so there is no possible collision
-  gzdbg << "Ball joint created\n";
+  //gzdbg << "Ball joint created\n";
 }
 
 void FlightControllerPlugin::FlushSensors()
 {
-  // Cant do a full reset of the RNG gets reset as well
+  // Make sure we do a reset on the time even if sensors are within range 
+  // XXX The first episode the sensor values are set to some active value
+  // to force plugins to send action state.
   this->SoftReset();
   double error = 0.017;// About 1 deg/s
-  double spR = 0.0;
-  double spP = 0.0;
-  double spY = 0.0;
-  //Flush stale IMU values
   while (1)
   {
       // Pitch and Yaw are negative
-      gzdbg << " Size =" << this->statePkt.imu_angular_velocity_rpy_size() << std::endl;
-      gzdbg << "IMU [" << this->statePkt.imu_angular_velocity_rpy(0) << "," << this->statePkt.imu_angular_velocity_rpy(1) << "," << this->statePkt.imu_angular_velocity_rpy(2) << "]" << std::endl;
-      if (this->statePkt.imu_angular_velocity_rpy_size() < 2 ||
+      //gzdbg << " Size =" << this->state.imu_angular_velocity_rpy_size() << std::endl;
+      //gzdbg << "IMU [" << this->state.imu_angular_velocity_rpy(0) << "," << this->state.imu_angular_velocity_rpy(1) << "," << this->state.imu_angular_velocity_rpy(2) << "]" << std::endl;
+      if (this->state.imu_angular_velocity_rpy_size() < 2 ||
           (
-          std::abs(this->statePkt.imu_angular_velocity_rpy(0)) > error || 
-          std::abs(this->statePkt.imu_angular_velocity_rpy(1)) > error || 
-          std::abs(this->statePkt.imu_angular_velocity_rpy(2)) > error)){
+          std::abs(this->state.imu_angular_velocity_rpy(0)) > error || 
+          std::abs(this->state.imu_angular_velocity_rpy(1)) > error || 
+          std::abs(this->state.imu_angular_velocity_rpy(2)) > error)){
         //gzdbg << "Gyro r=" << rates.X() << " p=" << rates.Y() << " y=" << rates.Z() << "\n";
         //
         // Trigger all plugins to publish their values
         this->world->Step(1);
         this->SoftReset();
-        boost::this_thread::sleep(boost::posix_time::milliseconds(100));
+        //boost::this_thread::sleep(boost::posix_time::milliseconds(100));
       } else {
           //gzdbg << "Target velocity reached! r=" << rates.X() << " p=" << rates.Y() << " y=" << rates.Z() << "\n";
         break;
@@ -444,274 +488,147 @@ void FlightControllerPlugin::FlushSensors()
 void FlightControllerPlugin::LoopThread()
 {
 
-
   this->LoadDigitalTwin();
-  this->SoftReset();
 
-
-	double msPeriod = 1000.0/this->loopRate;
 	while (1){
 
-		//std::lock_guard<std::mutex> lock(this->mutex);
+		bool ac_received = this->ReceiveAction();
 
-		//boost::this_thread::sleep(boost::posix_time::milliseconds(msPeriod));
-
-		gazebo::common::Time curTime = this->world->SimTime();
-		
-		ActionPtr ac = this->ReceiveAction();
-
-		if (ac != NULL){
-
-      //gzdbg << "Action = " << ac->motor(0) << "," << ac->motor(1) << "," << ac->motor(2) << "," << ac->motor(3) << std::endl;
-
-
-
-
-			if (ac->world_control() == gymfc::msgs::Action::RESET)
-			{
-        gzdbg << " Flushing sensors..." << std::endl;
-        // Block until we get respone from sensors
-        this->FlushSensors();
-        gzdbg << " Sensors flushed." << std::endl;
-			}
-
-      //Try reading from the socket, if a packet is
-      //available update the rotors
-      {
-        boost::mutex::scoped_lock lock2(g_CallbackMutex);
-        //this->statePkt.Clear();
-        this->callbackCount = -1 * (1 + this->numActuators);
-        //gzdbg << " Action received callback count = "<< this->callbackCount << std::endl;
-      }
-
-			if (ac->world_control() == gymfc::msgs::Action::RESET)
-			{
-        this->world->Step(1);
-        this->SoftReset();
-        this->WaitForSensorsThenSend();
+		if (!ac_received){
         continue;
-      }
+    }
+    //gzdbg << "Action = " << ac->motor(0) << "," << ac->motor(1) << "," << ac->motor(2) << "," << ac->motor(3) << std::endl;
 
-      // Forward the motor commands from the agent to each motor
-			//if (this->aircraftOnline)
-			//{
-        cmd_msgs::msgs::MotorCommand cmd;
-        //gzdbg << "Sending motor commands to digital twin" << std::endl;
-        for (unsigned int i = 0; i < this->numActuators; i++)
-        {
-          //gzdbg << i << "=" << this->motor[i] << std::endl;
-          cmd.add_motor(ac->motor(i));
-        }
-				this->cmdPub->Publish(cmd);
-			//}
-			this->lastControllerUpdateTime = curTime;
-			if (ac->world_control() == gymfc::msgs::Action::STEP)
-			{
-				this->world->Step(1);
-			}
+    // Handle reset command
+    if (this->action.world_control() == gymfc::msgs::Action::RESET)
+    {
+      //gzdbg << " Flushing sensors..." << std::endl;
+      // Block until we get respone from sensors
+      this->FlushSensors();
+      //gzdbg << " Sensors flushed." << std::endl;
+      this->state.set_sim_time(this->world->SimTime().Double());
+      this->state.set_status_code(gymfc::msgs::State_StatusCode_OK);
+      this->SendState();
+      continue;
+    }
 
-      //if (this->aircraftOnline)
-      //{
-        this->WaitForSensorsThenSend();
-      //} 
+    this->ResetCallbackCount();
 
-
-		}
-   // else {
-			//gzerr << "Command not received t=" << this->_world->SimTime().Double() << "\n";
-    //  this->statePkt.set_status_code(gymfc::msgs::State_StatusCode_ERROR);
-		//}	
-
-
-    // FIXME How are we going to flush old values
-    // How can we do this from the plugins?
-    //else 
-    //{
-      //FIXME 
-			//this->SendState();
-    //}
-
+    //Forward the motor commands from the agent to each motor
+    cmd_msgs::msgs::MotorCommand cmd;
+    //gzdbg << "Sending motor commands to digital twin" << std::endl;
+    for (unsigned int i = 0; i < this->numActuators; i++)
+    {
+      //gzdbg << i << "=" << this->motor[i] << std::endl;
+      cmd.add_motor(this->action.motor(i));
+    }
+    this->cmdPub->Publish(cmd);
+    // Triggers other plugins to publish
+    this->world->Step(1);
+    this->WaitForSensorsThenSend();
 	}
 }
+void FlightControllerPlugin::ResetCallbackCount()
+{
+  boost::mutex::scoped_lock lock(g_CallbackMutex);
+  this->sensorCallbackCount = -1 * this->numSensorCallbacks;
+}
+
+void FlightControllerPlugin::CalculateCallbackCount()
+{
+  // Reset the callback count, once we step the sim all the new
+  // vales will be published
+
+  for (auto  sensor : this->supportedSensors)
+  {
+    switch(sensor){
+      case IMU:
+        this->numSensorCallbacks += 1;
+        break;
+      case ESC:
+        this->numSensorCallbacks += this->numActuators;
+        break;
+    }
+  }
+
+} 
 void FlightControllerPlugin::WaitForSensorsThenSend()
 {
-  this->statePkt.set_sim_time(this->world->SimTime().Double());
-  this->statePkt.set_status_code(gymfc::msgs::State_StatusCode_OK);
+  this->state.set_sim_time(this->world->SimTime().Double());
+  this->state.set_status_code(gymfc::msgs::State_StatusCode_OK);
 
-  boost::mutex::scoped_lock lock2(g_CallbackMutex);
-  while (this->callbackCount < 0)
+  boost::mutex::scoped_lock lock(g_CallbackMutex);
+  while (this->sensorCallbackCount < 0)
   {
-    //gzdbg << "Callback count = " << this->callbackCount << std::endl;
-    this->callbackCondition.wait(lock2);
+    //gzdbg << "Callback count = " << this->sensorCallbackCount << std::endl;
+    this->callbackCondition.wait(lock);
   }
   //gzdbg << "Sending state"<<std::endl;
   this->SendState();
 }
 
-  /// \brief Bind to an adress and port
-  /// \param[in] _address Address to bind to.
-  /// \param[in] _port Port to bind to.
-  /// \return True on success.
 bool FlightControllerPlugin::Bind(const char *_address, const uint16_t _port)
+{
+  struct sockaddr_in sockaddr;
+  this->MakeSockAddr(_address, _port, sockaddr);
+
+  if (bind(this->handle, (struct sockaddr *)&sockaddr, sizeof(sockaddr)) != 0)
   {
-    struct sockaddr_in sockaddr;
-    this->MakeSockAddr(_address, _port, sockaddr);
-
-    if (bind(this->handle, (struct sockaddr *)&sockaddr, sizeof(sockaddr)) != 0)
-    {
-      shutdown(this->handle, 0);
-      #ifdef _WIN32
-      closesocket(this->handle);
-      #else
-      close(this->handle);
-      #endif
-      return false;
-    }
-    return true;
-  }
-
-  /// \brief Make a socket
-  /// \param[in] _address Socket address.
-  /// \param[in] _port Socket port
-  /// \param[out] _sockaddr New socket address structure.
-  void FlightControllerPlugin::MakeSockAddr(const char *_address, const uint16_t _port,
-    struct sockaddr_in &_sockaddr)
-  {
-    memset(&_sockaddr, 0, sizeof(_sockaddr));
-
-    #ifdef HAVE_SOCK_SIN_LEN
-      _sockaddr.sin_len = sizeof(_sockaddr);
-    #endif
-
-    _sockaddr.sin_port = htons(_port);
-    _sockaddr.sin_family = AF_INET;
-    _sockaddr.sin_addr.s_addr = inet_addr(_address);
-  }
-
-  /// \brief Receive data
-  /// \param[out] _buf Buffer that receives the data.
-  /// \param[in] _size Size of the buffer.
-  /// \param[in] _timeoutMS Milliseconds to wait for data.
-  ssize_t FlightControllerPlugin::Recv(void *_buf, const size_t _size, uint32_t _timeoutMs)
-  {
-    fd_set fds;
-    struct timeval tv;
-	//struct sockaddr_in remaddr;
-	//socklen_t addrlen = sizeof(this->remaddr);
-	this->remaddrlen = sizeof(this->remaddr);
-	int recvlen;
-
-    FD_ZERO(&fds);
-    FD_SET(this->handle, &fds);
-
-    tv.tv_sec = _timeoutMs / 1000;
-    tv.tv_usec = (_timeoutMs % 1000) * 1000UL;
-
-    if (select(this->handle+1, &fds, NULL, NULL, &tv) != 1)
-    {
-        return -1;
-    }
-
+    shutdown(this->handle, 0);
     #ifdef _WIN32
-    return recv(this->handle, reinterpret_cast<char *>(_buf), _size, 0);
+    closesocket(this->handle);
     #else
- 	//return recv(this->handle, _buf, _size, 0);
-    recvlen = recvfrom(this->handle, _buf, _size, 0, (struct sockaddr *)&this->remaddr, &this->remaddrlen);
-	//:: sendto(this->handle, buf, strlen(buf), 0, (struct sockaddr *)&remaddr, addrlen);
-	return recvlen;
+    close(this->handle);
     #endif
+    return false;
   }
+  return true;
+}
 
+void FlightControllerPlugin::MakeSockAddr(const char *_address, const uint16_t _port,
+  struct sockaddr_in &_sockaddr)
+{
+  memset(&_sockaddr, 0, sizeof(_sockaddr));
 
-/////////////////////////////////////////////////
-ActionPtr FlightControllerPlugin::ReceiveAction()
+  #ifdef HAVE_SOCK_SIN_LEN
+    _sockaddr.sin_len = sizeof(_sockaddr);
+  #endif
+
+  _sockaddr.sin_port = htons(_port);
+  _sockaddr.sin_family = AF_INET;
+  _sockaddr.sin_addr.s_addr = inet_addr(_address);
+}
+
+bool FlightControllerPlugin::ReceiveAction()
 {
 
-  bool commandProcessed = FALSE;
-  int waitMs = 1;
-  if (this->aircraftOnline)
-  {
-    // increase timeout for receive once we detect a packet from
-    // ArduCopter FCS.
-    waitMs = 5000;
-  }
-  else
-  {
-    // Otherwise skip quickly and do not set control force.
-    waitMs = 1;
-  }
-
-  char buf[1024];
+  //TODO What should the buf size be? How do we estimate the protobuf size?
+  unsigned int buf_size = 1024;
+  char buf[buf_size];
 
 	int recvSize;
-  recvSize = recvfrom(this->handle, buf, 1024 , 0, (struct sockaddr *)&this->remaddr, &this->remaddrlen);
-  //ssize_t recvSize = this->Recv(&buf, 1024, waitMs);
+  recvSize = recvfrom(this->handle, buf, buf_size , 0, (struct sockaddr *)&this->remaddr, &this->remaddrlen);
 
+  if (recvSize < 0)
+  {
+    return false;
+  }
   //gzdbg << "Size " << recvSize << " Data " << buf << std::endl;
+  std::string msg;
+  // Do the reassignment because protobuf needs string
+  msg.assign(buf, recvSize);
+  this->action.ParseFromString(msg);
+  //gzdbg << " Motor Size " << ac.motor_size() << std::endl;
+  //gzdbg << " World Control " << ac.world_control() << std::endl;
 
-  //ssize_t expectedPktSize =
-  //  sizeof(pkt.motor[0])*this->numActuators  + sizeof(pkt.resetWorld);
-
-  if (recvSize < 0)// || (recvSize < expectedPktSize))
-  {
-    // didn't receive a packet
-    //if (recvSize != -1)
-   // {
-    //  gzerr << "received bit size (" << recvSize << ") to small,"
-     //       << " controller expected size (" << expectedPktSize << ").\n";
-   // }
-	
-    //gazebo::common::Time::NSleep(100);
-    /*
-    if (this->aircraftOnline)
-    {
-      gzwarn << "Broken flight control connection, count ["
-             << this->connectionTimeoutCount
-             << "/" << this->connectionTimeoutMaxCount
-             << "]\n";
-      if (++this->connectionTimeoutCount >
-        this->connectionTimeoutMaxCount)
-      {
-        this->connectionTimeoutCount = 0;
-        this->aircraftOnline = false;
-        gzwarn << "Broken flight control connection, resetting.\n";
-      }
-    }
-    commandProcessed = FALSE;
-    */
-    return NULL;
-  }
-  else
-  {
-    //gzdbg << "Size " << recvSize << " Data " << buf << std::endl;
-    gymfc::msgs::Action ac;
-    std::string msg;
-    msg.assign(buf, recvSize);
-    ac.ParseFromString(msg);
-
-    //gzdbg << " Motor Size " << ac.motor_size() << std::endl;
-    //gzdbg << " World Control " << ac.world_control() << std::endl;
-
-    /*  
-    if (!this->aircraftOnline)
-    {
-      gzdbg << "Flight controller online.\n";
-      // made connection, set some flags
-      this->connectionTimeoutCount = 0;
-      this->aircraftOnline = true;
-    }
-    */
-
-    return boost::make_shared<gymfc::msgs::Action> (ac); 
-    // compute command based on requested motorSpeed
-  }
+  return true; 
 }
 
 /////////////////////////////////////////////////
 void FlightControllerPlugin::SendState() const
 {
   std::string buf;
-  this->statePkt.SerializeToString(&buf);
+  this->state.SerializeToString(&buf);
 
   //gzdbg << " Buf data= " << buf.data() << std::endl;
   //gzdbg << " Buf size= " << buf.size() << std::endl;
