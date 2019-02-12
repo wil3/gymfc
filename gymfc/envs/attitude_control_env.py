@@ -12,7 +12,7 @@ class AttitudeFlightControlEnv(GazeboEnv):
 
     def compute_reward(self):
         """ Compute the reward """
-        return -np.clip(np.sum(np.abs(self.error))/(self.omega_bounds[1]*3), 0, 1)
+        return -np.clip(np.sum(np.abs(self.rate_error))/(self.omega_bounds[1]*3), 0, 1)
 
     def sample_target(self):
         """ Sample a random angular velocity """
@@ -23,18 +23,17 @@ class GyroErrorFeedbackEnv(AttitudeFlightControlEnv):
         self.observation_history = []
         self.memory_size = kwargs["memory_size"]
         super(GyroErrorFeedbackEnv, self).__init__(**kwargs)
-        self.omega_target = self.sample_target()
+        self.rate_desired = self.sample_target()
 
     def step(self, action):
         action = np.clip(action, self.action_space.low, self.action_space.high) 
         # Step the sim
         self.obs = self.step_sim(action)
-        self.error = self.omega_target - self.obs.angular_velocity_rpy
-        self.observation_history.append(np.concatenate([self.error]))
+        self.observation_history.append(np.concatenate([self.rate_error]))
         state = self.state()
         done = self.sim_time >= self.max_sim_time
         reward = self.compute_reward()
-        info = {"sim_time": self.sim_time, "sp": self.omega_target, "current_rpy": self.omega_actual}
+        info = {"sim_time": self.sim_time, "sp": self.rate_desired, "current_rpy": self.rate_actual}
         return state, reward, done, info
 
     def state(self):
@@ -54,18 +53,17 @@ class GyroErrorESCVelocityFeedbackEnv(AttitudeFlightControlEnv):
         self.observation_history = []
         self.memory_size = kwargs["memory_size"]
         super(GyroErrorESCVelocityFeedbackEnv, self).__init__(**kwargs)
-        self.omega_target = self.sample_target()
+        self.rate_desired = self.sample_target()
 
     def step(self, action):
         action = np.clip(action, self.action_space.low, self.action_space.high) 
         # Step the sim
         self.obs = self.step_sim(action)
-        self.error = self.omega_target - self.obs.angular_velocity_rpy
-        self.observation_history.append(np.concatenate([self.error, self.obs.motor_velocity]))
+        self.observation_history.append(np.concatenate([self.rate_error, self.obs.motor_velocity]))
         state = self.state()
         done = self.sim_time >= self.max_sim_time
         reward = self.compute_reward()
-        info = {"sim_time": self.sim_time, "sp": self.omega_target, "current_rpy": self.omega_actual}
+        info = {"sim_time": self.sim_time, "sp": self.rate_desired, "current_rpy": self.rate_actual}
 
         return state, reward, done, info
 
@@ -97,11 +95,11 @@ class GyroErrorESCVelocityFeedbackContinuousEnv(GyroErrorESCVelocityFeedbackEnv)
             self.command_off_time = self.np_random.uniform(*self.command_time_on)
         elif self.sim_time >= self.command_off_time: # Issue new command
             # Commands are executed as pulses, always returning to center
-            if (self.omega_target == np.zeros(3)).all():
-                self.omega_target = self.sample_target() 
+            if (self.rate_desired == np.zeros(3)).all():
+                self.rate_desired = self.sample_target() 
                 self.command_off_time = self.sim_time  + self.np_random.uniform(*self.command_time_on)
             else:
-                self.omega_target = np.zeros(3)
+                self.rate_desired = np.zeros(3)
                 self.command_off_time = self.sim_time  + self.np_random.uniform(*self.command_time_off) 
 
         return ret 
