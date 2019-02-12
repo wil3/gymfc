@@ -264,7 +264,6 @@ class GazeboEnv(gym.Env):
 
         return self.loop.run_until_complete(self._step_sim(ac))
 
-
     def _state_to_ob(self):
         """ Convert the state returned from the digital twin to a single 
         array that can be used as the observation for neural network input """
@@ -274,10 +273,11 @@ class GazeboEnv(gym.Env):
         # Special case first
         ob = self.rate_error.tolist()
         # Now rest of the sensors
-        for sensor in self.sensor_cfg:
+        for sensor in self.sensor_cfg["measurements"]:
             if hasattr(self.sensor_values, sensor["name"]):
                 val = list(getattr(self.sensor_values, sensor["name"]))
                 # Scale before adding
+                # TODO Change this to linear rescale
                 if "range" in sensor:
                     distance = sensor["range"][1] - sensor["range"][0]
                     ob += (np.array(val)/distance).tolist()
@@ -397,12 +397,17 @@ class GazeboEnv(gym.Env):
         # Pass the number of motors to the plugin 
         # TODO If we find there are to many parameters to 
         # pass to the plugin switch to JSON
-        os.environ["NUM_MOTORS"] = str(self.motor_count)
+        os.environ["GYMFC_NUM_MOTORS"] = str(self.motor_count)
 
         # Port the aircraft reads in through this environment variable,
         # this is the network channel set up to pass sensor and ESC
         # data back and forth
-        os.environ["SITL_PORT"] = str(self.aircraft_port)
+        os.environ["GYMFC_SITL_PORT"] = str(self.aircraft_port)
+
+        os.environ["GYMFC_DIGITAL_TWIN_SDF"] = self.aircraft_model
+
+        # The flight controller needs to know which events to listen for
+        os.environ["GYMFC_SUPPORTED_SENSORS"] = ",".join(self.sensor_cfg["supported"])
 
         # Source the gazebo setup file to set up vars needed by the simuluator
         self.update_env_variables(self.setup_file)
@@ -424,7 +429,6 @@ class GazeboEnv(gym.Env):
         os.environ["GAZEBO_PLUGIN_PATH"] += (os.pathsep + plugin_path + os.pathsep +
 self.aircraft_plugin_dir)
 
-        os.environ["DIGITAL_TWIN_SDF"] = self.aircraft_model
 
         print ("Model Path=", os.environ["GAZEBO_MODEL_PATH"])
         print ("Plugin Path=",os.environ["GAZEBO_PLUGIN_PATH"] )
