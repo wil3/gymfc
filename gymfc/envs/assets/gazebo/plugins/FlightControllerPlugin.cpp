@@ -201,6 +201,18 @@ void FlightControllerPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf
   // Force pause because we drive the simulation steps
   this->world->SetPaused(TRUE);
 
+
+  // Initialize the state
+  for (unsigned int i = 0; i < 3; i++)
+  {
+    this->statePkt.add_imu_angular_velocity_rpy(0);
+    this->statePkt.add_imu_linear_acceleration_xyz(0);
+  }
+  for (unsigned int i = 0; i < 4; i++)
+  {
+    this->statePkt.add_imu_orientation_quat(0);
+  }
+
   // Controller time control.
   this->lastControllerUpdateTime = 0;
 
@@ -220,7 +232,7 @@ void FlightControllerPlugin::EscSensorCallback(EscSensorPtr &_escSensor)
   boost::mutex::scoped_lock lock(g_CallbackMutex);
 
   //this->statePkt.escTemperature[_escSensor->id()] = _escSensor->temperature();
-  gzdbg << "Receiving esc sensor " << _escSensor->id() << std::endl;
+  //gzdbg << "Receiving esc sensor " << _escSensor->id() << std::endl;
   this->callbackCount++;
   this->callbackCondition.notify_all();
 
@@ -228,20 +240,20 @@ void FlightControllerPlugin::EscSensorCallback(EscSensorPtr &_escSensor)
 void FlightControllerPlugin::ImuCallback(ImuPtr &_imu)
 {
   boost::mutex::scoped_lock lock(g_CallbackMutex);
-  gzdbg << "Received IMU" << std::endl;
+  //gzdbg << "Received IMU" << std::endl;
 
-  this->statePkt.add_imu_angular_velocity_rpy(_imu->angular_velocity().x());
-  this->statePkt.add_imu_angular_velocity_rpy(_imu->angular_velocity().y());
-  this->statePkt.add_imu_angular_velocity_rpy( _imu->angular_velocity().z());
+  this->statePkt.set_imu_angular_velocity_rpy(0, _imu->angular_velocity().x());
+  this->statePkt.set_imu_angular_velocity_rpy(1, _imu->angular_velocity().y());
+  this->statePkt.set_imu_angular_velocity_rpy(2, _imu->angular_velocity().z());
 
-  this->statePkt.add_imu_orientation_quat(_imu->orientation().w());
-  this->statePkt.add_imu_orientation_quat(_imu->orientation().x());
-  this->statePkt.add_imu_orientation_quat(_imu->orientation().y());
-  this->statePkt.add_imu_orientation_quat(_imu->orientation().z());
+  this->statePkt.set_imu_orientation_quat(0, _imu->orientation().w());
+  this->statePkt.set_imu_orientation_quat(1, _imu->orientation().x());
+  this->statePkt.set_imu_orientation_quat(2, _imu->orientation().y());
+  this->statePkt.set_imu_orientation_quat(3, _imu->orientation().z());
 
-  this->statePkt.add_imu_linear_acceleration_xyz(_imu->linear_acceleration().x());
-  this->statePkt.add_imu_linear_acceleration_xyz(_imu->linear_acceleration().y());
-  this->statePkt.add_imu_linear_acceleration_xyz(_imu->linear_acceleration().z());
+  this->statePkt.set_imu_linear_acceleration_xyz(0, _imu->linear_acceleration().x());
+  this->statePkt.set_imu_linear_acceleration_xyz(1, _imu->linear_acceleration().y());
+  this->statePkt.set_imu_linear_acceleration_xyz(2, _imu->linear_acceleration().z());
 
   this->callbackCount++;
   this->callbackCondition.notify_all();
@@ -396,6 +408,39 @@ void FlightControllerPlugin::LoadDigitalTwin()
   // This is actually great because we've removed the ground plane so there is no possible collision
   gzdbg << "Ball joint created\n";
 }
+
+void FlightControllerPlugin::FlushSensors()
+{
+  // Cant do a full reset of the RNG gets reset as well
+  this->SoftReset();
+  double error = 0.017;// About 1 deg/s
+  double spR = 0.0;
+  double spP = 0.0;
+  double spY = 0.0;
+  //Flush stale IMU values
+  while (1)
+  {
+      // Pitch and Yaw are negative
+      gzdbg << " Size =" << this->statePkt.imu_angular_velocity_rpy_size() << std::endl;
+      gzdbg << "IMU [" << this->statePkt.imu_angular_velocity_rpy(0) << "," << this->statePkt.imu_angular_velocity_rpy(1) << "," << this->statePkt.imu_angular_velocity_rpy(2) << "]" << std::endl;
+      if (this->statePkt.imu_angular_velocity_rpy_size() < 2 ||
+          (
+          std::abs(this->statePkt.imu_angular_velocity_rpy(0)) > error || 
+          std::abs(this->statePkt.imu_angular_velocity_rpy(1)) > error || 
+          std::abs(this->statePkt.imu_angular_velocity_rpy(2)) > error)){
+        //gzdbg << "Gyro r=" << rates.X() << " p=" << rates.Y() << " y=" << rates.Z() << "\n";
+        //
+        // Trigger all plugins to publish their values
+        this->world->Step(1);
+        this->SoftReset();
+        boost::this_thread::sleep(boost::posix_time::milliseconds(100));
+      } else {
+          //gzdbg << "Target velocity reached! r=" << rates.X() << " p=" << rates.Y() << " y=" << rates.Z() << "\n";
+        break;
+      }
+  }
+
+}
 void FlightControllerPlugin::LoopThread()
 {
 
@@ -409,7 +454,7 @@ void FlightControllerPlugin::LoopThread()
 
 		//std::lock_guard<std::mutex> lock(this->mutex);
 
-		boost::this_thread::sleep(boost::posix_time::milliseconds(msPeriod));
+		//boost::this_thread::sleep(boost::posix_time::milliseconds(msPeriod));
 
 		gazebo::common::Time curTime = this->world->SimTime();
 		
@@ -417,88 +462,65 @@ void FlightControllerPlugin::LoopThread()
 
 		if (ac != NULL){
 
-      gzdbg << "Action = " << ac->motor(0) << "," << ac->motor(1) << "," << ac->motor(2) << "," << ac->motor(3) << std::endl;
+      //gzdbg << "Action = " << ac->motor(0) << "," << ac->motor(1) << "," << ac->motor(2) << "," << ac->motor(3) << std::endl;
 
 
+
+
+			if (ac->world_control() == gymfc::msgs::Action::RESET)
+			{
+        gzdbg << " Flushing sensors..." << std::endl;
+        // Block until we get respone from sensors
+        this->FlushSensors();
+        gzdbg << " Sensors flushed." << std::endl;
+			}
 
       //Try reading from the socket, if a packet is
       //available update the rotors
       {
         boost::mutex::scoped_lock lock2(g_CallbackMutex);
-        this->statePkt.Clear();
+        //this->statePkt.Clear();
         this->callbackCount = -1 * (1 + this->numActuators);
-        gzdbg << " Action received callback count = "<< this->callbackCount << std::endl;
+        //gzdbg << " Action received callback count = "<< this->callbackCount << std::endl;
       }
-
 
 			if (ac->world_control() == gymfc::msgs::Action::RESET)
 			{
-				// Cant do a full reset of the RNG gets reset as well
-				this->SoftReset();
-				double error = 0.0001;// About 0.006 deg/s
-				double spR = 0.0;
-				double spP = 0.0;
-				double spY = 0.0;
-				//Flush stale IMU values
-        /*
-				while (1)
-				{
-  						ignition::math::Vector3d rates = this->imuSensor->AngularVelocity();
-						// Pitch and Yaw are negative
-						if (std::abs(spR - rates.X()) > error || std::abs(spP + rates.Y()) > error || std::abs(spY + rates.Z()) > error){
-							//gzdbg << "Gyro r=" << rates.X() << " p=" << rates.Y() << " y=" << rates.Z() << "\n";
-							this->world->Step(1);
-							if (!this->resetWithRandomAngularVelocity){//Only reset if trying to get to 0 rate 
-								this->softReset();
-							} 
-							boost::this_thread::sleep(boost::posix_time::milliseconds(100));
-						} else {
-							  //gzdbg << "Target velocity reached! r=" << rates.X() << " p=" << rates.Y() << " y=" << rates.Z() << "\n";
-							break;
-						}
-				}*/
-  				if (this->world->SimTime().Double() != 0.0){
-					gzerr << "Reset sent but clock did not reset, at " << this->world->SimTime().Double() << "\n";
-				}
-			}
+        this->world->Step(1);
+        this->SoftReset();
+        this->WaitForSensorsThenSend();
+        continue;
+      }
 
       // Forward the motor commands from the agent to each motor
-			if (this->aircraftOnline)
-			{
+			//if (this->aircraftOnline)
+			//{
         cmd_msgs::msgs::MotorCommand cmd;
-        gzdbg << "Sending motor commands to digital twin" << std::endl;
+        //gzdbg << "Sending motor commands to digital twin" << std::endl;
         for (unsigned int i = 0; i < this->numActuators; i++)
         {
           //gzdbg << i << "=" << this->motor[i] << std::endl;
           cmd.add_motor(ac->motor(i));
         }
 				this->cmdPub->Publish(cmd);
-			}
+			//}
 			this->lastControllerUpdateTime = curTime;
 			if (ac->world_control() == gymfc::msgs::Action::STEP)
 			{
 				this->world->Step(1);
 			}
-      this->statePkt.set_sim_time(this->world->SimTime().Double());
-      this->statePkt.set_status_code(gymfc::msgs::State_StatusCode_OK);
 
-      if (this->aircraftOnline)
-      {
-        boost::mutex::scoped_lock lock2(g_CallbackMutex);
-        while (this->callbackCount < 0)
-        {
-          gzdbg << "Callback count = " << this->callbackCount << std::endl;
-          this->callbackCondition.wait(lock2);
-        }
-        gzdbg << "Sending state"<<std::endl;
-        this->SendState();
-      } 
+      //if (this->aircraftOnline)
+      //{
+        this->WaitForSensorsThenSend();
+      //} 
 
 
-		} else {
+		}
+   // else {
 			//gzerr << "Command not received t=" << this->_world->SimTime().Double() << "\n";
-      this->statePkt.set_status_code(gymfc::msgs::State_StatusCode_ERROR);
-		}	
+    //  this->statePkt.set_status_code(gymfc::msgs::State_StatusCode_ERROR);
+		//}	
 
 
     // FIXME How are we going to flush old values
@@ -510,6 +532,20 @@ void FlightControllerPlugin::LoopThread()
     //}
 
 	}
+}
+void FlightControllerPlugin::WaitForSensorsThenSend()
+{
+  this->statePkt.set_sim_time(this->world->SimTime().Double());
+  this->statePkt.set_status_code(gymfc::msgs::State_StatusCode_OK);
+
+  boost::mutex::scoped_lock lock2(g_CallbackMutex);
+  while (this->callbackCount < 0)
+  {
+    //gzdbg << "Callback count = " << this->callbackCount << std::endl;
+    this->callbackCondition.wait(lock2);
+  }
+  //gzdbg << "Sending state"<<std::endl;
+  this->SendState();
 }
 
   /// \brief Bind to an adress and port
@@ -605,7 +641,6 @@ ActionPtr FlightControllerPlugin::ReceiveAction()
     waitMs = 1;
   }
 
-  gymfc::msgs::Action ac;
   char buf[1024];
 
 	int recvSize;
@@ -620,15 +655,14 @@ ActionPtr FlightControllerPlugin::ReceiveAction()
   if (recvSize < 0)// || (recvSize < expectedPktSize))
   {
     // didn't receive a packet
-    /*
-    if (recvSize != -1)
-    {
-      gzerr << "received bit size (" << recvSize << ") to small,"
-            << " controller expected size (" << expectedPktSize << ").\n";
-    }
-    */
+    //if (recvSize != -1)
+   // {
+    //  gzerr << "received bit size (" << recvSize << ") to small,"
+     //       << " controller expected size (" << expectedPktSize << ").\n";
+   // }
 	
-    gazebo::common::Time::NSleep(100);
+    //gazebo::common::Time::NSleep(100);
+    /*
     if (this->aircraftOnline)
     {
       gzwarn << "Broken flight control connection, count ["
@@ -644,18 +678,21 @@ ActionPtr FlightControllerPlugin::ReceiveAction()
       }
     }
     commandProcessed = FALSE;
+    */
     return NULL;
   }
   else
   {
     //gzdbg << "Size " << recvSize << " Data " << buf << std::endl;
+    gymfc::msgs::Action ac;
     std::string msg;
     msg.assign(buf, recvSize);
     ac.ParseFromString(msg);
 
-    gzdbg << " Motor Size " << ac.motor_size() << std::endl;
-    gzdbg << " World Control " << ac.world_control() << std::endl;
+    //gzdbg << " Motor Size " << ac.motor_size() << std::endl;
+    //gzdbg << " World Control " << ac.world_control() << std::endl;
 
+    /*  
     if (!this->aircraftOnline)
     {
       gzdbg << "Flight controller online.\n";
@@ -663,7 +700,7 @@ ActionPtr FlightControllerPlugin::ReceiveAction()
       this->connectionTimeoutCount = 0;
       this->aircraftOnline = true;
     }
-
+    */
 
     return boost::make_shared<gymfc::msgs::Action> (ac); 
     // compute command based on requested motorSpeed
