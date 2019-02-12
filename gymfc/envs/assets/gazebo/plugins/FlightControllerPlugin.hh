@@ -89,7 +89,9 @@ class FlightControllerPlugin : public WorldPlugin
   // entire model
   private: physics::LinkPtr FindLinkByName(physics::ModelPtr _model, std::string _linkName);
 
+  private: void FlushSensors();
 
+  private: void WaitForSensorsThenSend();
 
   private: void UpdateEnd();
 
