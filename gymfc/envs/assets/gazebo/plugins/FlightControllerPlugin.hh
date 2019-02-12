@@ -34,10 +34,10 @@
 #include "State.pb.h"
 #include "Action.pb.h"
 
-#define MAX_MOTORS 255
-#define DIGITAL_TWIN_SDF_ENV "DIGITAL_TWIN_SDF"
-#define NUM_MOTORS_ENV "NUM_MOTORS"
-//#define DIGITAL_TWIN_ATTACH_LINK "CoM"
+#define ENV_SITL_PORT "GYMFC_SITL_PORT"
+#define ENV_DIGITAL_TWIN_SDF "GYMFC_DIGITAL_TWIN_SDF"
+#define ENV_NUM_MOTORS "GYMFC_NUM_MOTORS"
+#define ENV_SUPPORTED_SENSORS "GYMFC_SUPPORTED_SENSORS"
 
 namespace gazebo
 {
@@ -51,7 +51,15 @@ namespace gazebo
 
   typedef const boost::shared_ptr<const sensor_msgs::msgs::Imu> ImuPtr;
   typedef const boost::shared_ptr<const sensor_msgs::msgs::EscSensor> EscSensorPtr;
-  typedef const boost::shared_ptr<const gymfc::msgs::Action> ActionPtr;
+
+  /// \brief List of all supported sensors. The client must
+  // tell us which ones it will use. The client must be aware of the 
+  // digitial twin they are using and that it supports the corresponding 
+  // sensors.
+  enum Sensors {
+    IMU,
+    ESC
+  };
 
 class FlightControllerPlugin : public WorldPlugin
 {
@@ -61,54 +69,74 @@ class FlightControllerPlugin : public WorldPlugin
   /// \brief Destructor.
   public: ~FlightControllerPlugin();
 
-  // The function called when the plugin in loaded 
+  /// \brief The function called when the plugin in loaded 
   public: void Load(physics::WorldPtr _world, sdf::ElementPtr _sdf);
+
+  private: void LoadVars();
+
+  /// \brief Parse and process SDF 
 	public: void ProcessSDF(sdf::ElementPtr _sdf);
 
-	public: void LoopThread();
-	
-
-	public: bool Bind(const char *_address, const uint16_t _port);
-  public: void MakeSockAddr(const char *_address, const uint16_t _port, struct sockaddr_in &_sockaddr);
-  public: ssize_t Recv(void *_buf, const size_t _size, uint32_t _timeoutMs);
-
-  /// \brief Receive motor commands from Quadcopter
-  private: ActionPtr ReceiveAction();
-
-  /// \brief Send state to Quadcopter
-  private: void SendState() const;
-  //private: void SendState(bool motorCommandProcessed);
-	private: void SoftReset();
-
+  /// \brief Dynamically load the digitial twin from the location
+  // specified by the environment variable.
   private: void LoadDigitalTwin();
 
+  /// \brief Main loop thread waiting for incoming UDP packets
+	public: void LoopThread();
+	
+  /// \brief Bind to the specified port to receive UDP packets
+	public: bool Bind(const char *_address, const uint16_t _port);
+
+  /// \brief Helper to make a socket
+  public: void MakeSockAddr(const char *_address, const uint16_t _port, struct sockaddr_in &_sockaddr);
+
+  /// \brief Receive action including motor commands 
+  private: bool ReceiveAction();
+
+  /// \brief Initialize a single protobuf state that is 
+  // reused throughout the simulation.
+  private: void InitState();
+
+  /// \brief Send current state  
+  private: void SendState() const;
+
+  /// \brief Reset the world time and model, differs from 
+  // world reset such that the random number generator is not 
+  // reset.
+	private: void SoftReset();
+
+
+  /// \brief Callback from the digital twin to recieve ESC sensor values
+  // where each ESC/motor will be a separate message
   private: void EscSensorCallback(EscSensorPtr &_escSensor);
+
+  /// \brief Callback from the digital twin to recieve IMU values
   private: void ImuCallback(ImuPtr &_imu);
-  // Calling GetLink from a model will not traverse nested models
+
+  private: void CalculateCallbackCount();
+  private: void ResetCallbackCount();
+
+  // \brief Calling GetLink from a model will not traverse nested models
   // until found, this function will find a link name from the 
   // entire model
   private: physics::LinkPtr FindLinkByName(physics::ModelPtr _model, std::string _linkName);
 
+  /// \brief Block until the sensors are within a certain threshold. Useful for 
+  // flushing remote sensors at the beinning of a new task.
   private: void FlushSensors();
 
+  /// \brief Block until all the callbacks for the supported sneors
+  // are recieved. 
   private: void WaitForSensorsThenSend();
 
-  private: void UpdateEnd();
+  private: bool SensorEnabled(Sensors _sensor);
 
   private: std::string robotNamespace;
 
+  /// \brief Main loop thread for the server
 	private: boost::thread callbackLoopThread;
 
-	/// \brief How fast in Hertz the inner loop runs
-	private: double loopRate;
-
-	private: bool resetWithRandomAngularVelocity;
-	private: int randomSeed;
-	private: ignition::math::Vector2d rollLimit;
-	private: ignition::math::Vector2d pitchLimit;
-	private: ignition::math::Vector2d yawLimit;
-
-
+  /// \brief Pointer to the world
 	public: physics::WorldPtr world;
 	
 	/// \brief Pointer to the update event connection.
@@ -127,20 +155,15 @@ class FlightControllerPlugin : public WorldPlugin
 
 	public: socklen_t remaddrlen;
 
-	/// \brief false before ardupilot controller is online
-	/// to allow gazebo to continue without waiting
-	public: bool aircraftOnline;
-
-  private: std::string digitalTwinSDF;
-
-  private: int numActuators;
-
 	/// \brief number of times ArduCotper skips update
 	public: int connectionTimeoutCount;
 
 	/// \brief number of times ArduCotper skips update
 	/// before marking Quadcopter offline
 	public: int connectionTimeoutMaxCount;
+
+  /// \brief File path to the digital twin SDF
+  private: std::string digitalTwinSDF;
 
   private: std::string cmdPubTopic;
   private: std::string imuSubTopic;
@@ -154,14 +177,20 @@ class FlightControllerPlugin : public WorldPlugin
 
    // Subscribe to all possible sensors
   private: transport::SubscriberPtr imuSub;
-  //private: transport::SubscriberPtr escSub;
-  private: transport::SubscriberPtr escSub[MAX_MOTORS];
+  private: std::vector<transport::SubscriberPtr> escSub;
   private: cmd_msgs::msgs::MotorCommand cmdMsg;
-  private: int callbackCount;
+
+  /// \brief Current callback count incremented as sensors are pbulished
+  private: int sensorCallbackCount;
+  private: int numSensorCallbacks;
 
   private: boost::condition_variable callbackCondition;
 
-  private: gymfc::msgs::State statePkt;
+  private: gymfc::msgs::State state;
+  private: gymfc::msgs::Action action;
+  private: std::vector<Sensors> supportedSensors;
+
+  private: int numActuators;
   };
 }
 #endif
