@@ -6,7 +6,7 @@ import numpy as np
 from mpi4py import MPI
 import math
 import os
-from gymfc.envs.gazebo_env import GazeboEnv
+from gymfc.envs.fc_env import FlightControlEnv
 
 """
 This script evaluates a PID controller in the GymFC environment. This can be
@@ -43,7 +43,7 @@ another variable was not introduced.
 """
 
 
-def plot_step_response(desired, actual,
+def plot_step_response(t, desired, actual,
                  end=1., title=None,
                  step_size=0.001, threshold_percent=0.1):
     """
@@ -53,7 +53,7 @@ def plot_step_response(desired, actual,
 
     #actual = actual[:,:end,:]
     end_time = len(desired) * step_size
-    t = np.arange(0, end_time, step_size)
+    #t = np.arange(0, end_time, step_size)
 
     #desired = desired[:end]
     threshold = threshold_percent * desired
@@ -148,36 +148,67 @@ class PIDPolicy(Policy):
     def reset(self):
         self.controller = PIDController(pid_roll = self.r, pid_pitch = self.p, pid_yaw = self.y )
 
-class PIDEnv(GazeboEnv):
+class PIDEnv(FlightControlEnv):
+    """ Define an environment for evaluating a PID controller """
+
+    def __init__(self, max_sim_time = 5):
+        self.ob = None
+        self.desired_rate = None
+        self.max_sim_time = max_sim_time
+        # Note: Excluding action/state space because we dont need it
+        super(PIDEnv, self).__init__()
+
+    """
     def step(self, ac):
-        self.step_sim(ac)
-        #print ("Sim time=", self.sim_time)
-        done = self.sim_time > 5.0
-        return done 
+        self.ob = self.step_sim(ac)
+        return self.state(), 0, self.sim_time > self.max_sim_time, {}
+    """
+
+    def on_observation(self, ob):
+        self.ob = ob
+
+    def on_reset(self):
+        self.desired_rate = self.np_random.uniform(math.radians(-300), math.radians(300), size=3)
+
+    def is_done(self):
+        return self.sim_time > self.max_sim_time
 
     def state(self):
-        return np.zeros(7)
+        return self.ob
 
-    def sample_target(self):
-        return  self.np_random.uniform(math.radians(-300), math.radians(300), size=3)
+    def desired_state(self):
+        return self.desired_rate
 
+    def reward(self):
+        # non training example
+        return 0;
+
+    """
+    def reset(self):
+        self.desired_rate = self.np_random.uniform(math.radians(-300), math.radians(300), size=3)
+        self.ob = super(PIDEnv, self).reset()
+        return self.state()
+    """
 
 def eval(env, pi):
     actuals = []
     desireds = []
+    ts = []
     pi.reset()
-    env.reset()
+    state = env.reset()
     start_time = time.time()
     i = 0
     while True:
-        desired = env.rate_desired
-        actual = env.rate_actual
+        desired = env.desired_state()
+        actual = state 
         # PID only needs to calculate error between desired and actual y_e
         ac = pi.action([], env.sim_time, desired, actual)
+#        print ("t=", env.sim_time, " Desired=", desired, " Actual=", actual, " Action=", ac)
         #print (ac)
         #ac = np.array([1, 0, 0, 1])
         #ac = np.array([0, 1, 1, 0])
-        done = env.step(ac)
+        state, _, done, _ = env.step(ac)
+        ts.append(env.sim_time)
         actuals.append(actual)
         desireds.append(desired)
         #print (i, ": ", desired, "->", actual, "==>", ac )
@@ -188,7 +219,7 @@ def eval(env, pi):
     lapse = time.time() - start_time
     print ("Lapse time = ", lapse)
     print ("Rate steps/s = ", i/lapse)
-    return desireds, actuals
+    return ts, desireds, actuals
 
 
 """
@@ -466,15 +497,16 @@ class PID:
 
 def main(env_id, seed):
     #env = gym.make(env_id)
-    env = PIDEnv()
+    env = PIDEnv(max_sim_time=5)
     #env.render()
     rank = MPI.COMM_WORLD.Get_rank()
     workerseed = seed + 1000000 * rank
     env.seed(workerseed)
     pi = PIDPolicy()
-    desireds, actuals = eval(env, pi)
+    t, desireds, actuals = eval(env, pi)
+    print ("S1=", len(desireds), " S2=", len(actuals))
     title = "PID Step Response in Environment {}".format(env_id)
-    plot_step_response(np.array(desireds), np.array(actuals), title=title)
+    plot_step_response(np.array(t), np.array(desireds), np.array(actuals), title=title)
 
 if __name__ == "__main__":
 
