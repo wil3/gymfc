@@ -18,7 +18,7 @@ class AttitudeFlightControlEnv(GazeboEnv):
         """ Sample a random angular velocity """
         return  self.np_random.uniform(self.omega_bounds[0], self.omega_bounds[1], size=3)
     
-class GyroErrorFeedbackEnv(AttitudeFlightControlEnv):
+class EpisodicEnv(AttitudeFlightControlEnv):
     def __init__(self, **kwargs): 
         self.observation_history = []
         self.memory_size = kwargs["memory_size"]
@@ -37,7 +37,7 @@ class GyroErrorFeedbackEnv(AttitudeFlightControlEnv):
         return state, reward, done, info
 
     def state(self):
-        """ Get the current state """
+        """ Return the current state """
         # The newest will be at the end of the array
         memory = np.array(self.observation_history[-self.memory_size:])
         return np.pad(memory.ravel(), 
@@ -79,7 +79,7 @@ class GyroErrorESCVelocityFeedbackEnv(AttitudeFlightControlEnv):
         self.observation_history = []
         return super(GyroErrorESCVelocityFeedbackEnv, self).reset()
 
-class GyroErrorESCVelocityFeedbackContinuousEnv(GyroErrorESCVelocityFeedbackEnv):
+class ContinuousEnv(GyroErrorESCVelocityFeedbackEnv):
     def __init__(self, **kwargs): 
         self.command_time_off = kwargs["command_time_off"]
         self.command_time_on = kwargs["command_time_on"]
