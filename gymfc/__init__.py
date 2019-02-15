@@ -11,14 +11,14 @@ kwargs = {
     "max_sim_time": 30.,
     }
 kwargs.update(default_kwargs)
-id = 'AttFC_GyroErr-MotorVel_M4_Ep-v0'
+id = 'AttitudeControl_Ep-v0'
 register(
     id=id,
     entry_point='gymfc.envs:GyroErrorESCVelocityFeedbackEnv',
     kwargs=kwargs)
 
 # Optionally allow different memories
-for i in range(1,MAX_MEMORY):
+for i in range(1, MAX_MEMORY):
     kwargs = {
         "memory_size": i,
         "max_sim_time": 1.,
@@ -46,7 +46,7 @@ register(
     kwargs=kwargs)
 
 # And with extra memory
-for i in range(1,MAX_MEMORY):
+for i in range(1, MAX_MEMORY):
     kwargs = {
          "memory_size": i,
          "command_time_off":[0.1, 1.0],
@@ -60,16 +60,3 @@ for i in range(1,MAX_MEMORY):
         entry_point='gymfc.envs:GyroErrorESCVelocityFeedbackContinuousEnv',
         kwargs=kwargs)
 
-
-# For flight control systems without ESC sensors
-for i in range(1,MAX_MEMORY):
-    kwargs = {
-        "memory_size": i,
-        "max_sim_time": 1.,
-        }
-    kwargs.update(default_kwargs)
-    id = 'AttFC_GyroErr{}_M4_Ep-v0'.format(i)
-    register(
-        id=id,
-        entry_point='gymfc.envs:GyroErrorFeedbackEnv',
-        kwargs=kwargs)
