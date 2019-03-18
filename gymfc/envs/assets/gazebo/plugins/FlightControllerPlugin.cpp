@@ -14,6 +14,9 @@
  * limitations under the License.
  *
 */
+#include <iomanip>
+
+
 #include <functional>
 #include <fcntl.h>
 #include <cstdlib>
@@ -44,6 +47,7 @@ typedef SSIZE_T ssize_t;
 #include <sdf/sdf.hh>
 #include <boost/algorithm/string.hpp>
 #include <ignition/math/Filter.hh>
+#include "gazebo/util/IgnMsgSdf.hh"
 #include <gazebo/common/Assert.hh>
 #include <gazebo/common/Plugin.hh>
 #include <gazebo/msgs/msgs.hh>
@@ -166,6 +170,8 @@ void FlightControllerPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf
       case ESC:
         //Each defined motor will have a unique index, since they are indpendent they must come in 
         //as separate messages
+        //XXX NOTE index starts at 1 to match that of betaflight mixer
+        //for (unsigned int i = 1; i <= this->numActuators; i++)
         for (unsigned int i = 0; i < this->numActuators; i++)
         {
           this->escSub.push_back(this->nodeHandle->Subscribe<sensor_msgs::msgs::EscSensor>(this->escSubTopic + "/" + std::to_string(i) , &FlightControllerPlugin::EscSensorCallback, this));
@@ -178,6 +184,7 @@ void FlightControllerPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf
   this->cmdPub = this->nodeHandle->Advertise<cmd_msgs::msgs::MotorCommand>(this->cmdPubTopic);
   // Force pause because we drive the simulation steps
   this->world->SetPaused(TRUE);
+
 
   this->callbackLoopThread = boost::thread( boost::bind( &FlightControllerPlugin::LoopThread, this) );
 }
@@ -222,6 +229,7 @@ void FlightControllerPlugin::LoadVars()
     return;
   }
 
+  //TODO parse from config plugin
   if(const char* env_p =  std::getenv(ENV_NUM_MOTORS))
   {
     this->numActuators = std::stoi(env_p);
@@ -287,9 +295,10 @@ void FlightControllerPlugin::InitState()
 
 void FlightControllerPlugin::EscSensorCallback(EscSensorPtr &_escSensor)
 {
+  uint32_t id = _escSensor->id();  
+  //gzdbg << "Received ESC " << id << std::endl;
   boost::mutex::scoped_lock lock(g_CallbackMutex);
 
-  uint32_t id = _escSensor->id();  
   this->state.set_esc_motor_angular_velocity(id, _escSensor->motor_speed());
   this->state.set_esc_temperature(id, _escSensor->temperature());
   this->state.set_esc_current(id, _escSensor->current());
@@ -300,8 +309,8 @@ void FlightControllerPlugin::EscSensorCallback(EscSensorPtr &_escSensor)
 }
 void FlightControllerPlugin::ImuCallback(ImuPtr &_imu)
 {
-  boost::mutex::scoped_lock lock(g_CallbackMutex);
   //gzdbg << "Received IMU" << std::endl;
+  boost::mutex::scoped_lock lock(g_CallbackMutex);
 
   this->state.set_imu_angular_velocity_rpy(0, _imu->angular_velocity().x());
   this->state.set_imu_angular_velocity_rpy(1, _imu->angular_velocity().y());
@@ -390,7 +399,6 @@ void FlightControllerPlugin::LoadDigitalTwin()
   const sdf::ElementPtr modelElement = rootElement->GetElement("model");
   const std::string modelName = modelElement->Get<std::string>("name");
   //gzdbg << "Found " << modelName << " model!" << std::endl;
-
   unsigned int startModelCount = this->world->ModelCount();
   //this->world->InsertModelFile(sdfElement);
   
@@ -424,35 +432,69 @@ void FlightControllerPlugin::LoadDigitalTwin()
     return;
   }
 
-  //Find the base link to attached to the world
-  physics::LinkPtr digitalTwinCoMLink = FindLinkByName(model, DIGITAL_TWIN_ATTACH_LINK);
-  if (!link)
+  //model->PluginInfo
+  const std::string uri = model->URI().Str();
+  ignition::msgs::Plugin_V plugins;
+  bool success;
+  common::URI pluginUri;
+  //pluginUri.Parse(model->URI().Str() + "data://world/default/model/nf1/plugin/");
+  pluginUri.Parse(model->URI().Str() + "/plugin/");
+  model->PluginInfo(pluginUri, plugins, success);
+  if (!success)
   {
-    gzerr << "Could not find link '" << DIGITAL_TWIN_ATTACH_LINK <<" from model " << modelName <<std::endl;
+    gzdbg << "Could not access plugin at URI " << uri << " to load aircraft configuration. Aborting!" <<  std::endl;
     return;
-  } 
+  }
+  ignition::msgs::Plugin aircraftConfigPlugin;
+  bool foundAircraftConfigPlugin = false;
+  for (auto & plugin : plugins.plugins()) 
+  {
+      gzdbg << "Plugin filename " << plugin.filename() << std::endl;
+      if (plugin.filename().compare(kAircraftConfigFileName) == 0)
+      {
+        aircraftConfigPlugin = plugin;
+        foundAircraftConfigPlugin = true;
+        break;
+      }
+  }
+  if (!foundAircraftConfigPlugin)
+  {
+    gzerr << "Could not find required " << kAircraftConfigFileName << ". Aborting!" << std::endl;
+  }
+  auto pluginSDF = util::Convert(aircraftConfigPlugin);
+
+  const sdf::ElementPtr centerOfThrustElement = pluginSDF->GetElement("centerOfThrust");
+  std::string centerOfThrustReferenceLinkName = centerOfThrustElement->Get<std::string>("link");
+  gzdbg << "CoT link=" << centerOfThrustReferenceLinkName << std::endl;
+  ignition::math::Vector3d cot = centerOfThrustElement->Get<ignition::math::Vector3d>("offset");
+  gzdbg << "Got COT from plugin " << cot.X() << " " << cot.Y() << " " << cot.Z()  << std::endl;
 
   
-  physics::ModelPtr trainingRigModel = this->world->ModelByName(kTrainingRigModelName);
-  if (!trainingRigModel){
+  physics::ModelPtr supportModel = this->world->ModelByName(kTrainingRigModelName);
+  if (!supportModel){
     gzerr << "Could not find training rig"<<std::endl;
     return;
   }
 
   
-
-
-  // Create the actual ball link, connecting the digital twin to the sim world
-  physics::JointPtr joint = trainingRigModel->CreateJoint("ball_joint", "ball", trainingRigModel->GetLink("pivot"), digitalTwinCoMLink);
-  if (!joint)
-  {
-    gzerr << "Could not create joint"<<std::endl;
+  physics::LinkPtr centerOfThrustReferenceLink = FindLinkByName(model, centerOfThrustReferenceLinkName);
+  if (!centerOfThrustReferenceLink){
+    gzerr << "Could not find frame link"<<std::endl;
     return;
   }
+  //joint->Load(supportModel->GetLink("pivot"), centerOfThrustReferenceLink, ignition::math::Pose3d(0, 0, 1, 0, 0, 0));
+  gazebo::physics::JointPtr joint;
+  joint = this->world->Physics()->CreateJoint("ball");
+  //joint = this->world->Physics()->CreateJoint("fixed");
+  joint->SetName("ball_joint");
+  //joint->Attach(supportModel->GetLink("pivot"), centerOfThrustReferenceLink);
+  //joint->Load(supportModel->GetLink("pivot"), centerOfThrustReferenceLink, ignition::math::Pose3d(0, 0, 0, 0, 0, 0));
+  joint->Attach(centerOfThrustReferenceLink, supportModel->GetLink("pivot"));
+  joint->Load( centerOfThrustReferenceLink,supportModel->GetLink("pivot"), ignition::math::Pose3d(cot.X(), cot.Y(), cot.Z(), 0, 0, 0));
   joint->Init();
   
   // This is actually great because we've removed the ground plane so there is no possible collision
-  //gzdbg << "Ball joint created\n";
+  gzdbg << "Ball joint created\n";
 }
 
 void FlightControllerPlugin::FlushSensors()
@@ -461,6 +503,8 @@ void FlightControllerPlugin::FlushSensors()
   // XXX The first episode the sensor values are set to some active value
   // to force plugins to send action state.
   this->SoftReset();
+
+  //TODO this must be based on the units or come up with somehting generic
   double error = 0.017;// About 1 deg/s
   while (1)
   {
@@ -473,10 +517,13 @@ void FlightControllerPlugin::FlushSensors()
           std::abs(this->state.imu_angular_velocity_rpy(1)) > error || 
           std::abs(this->state.imu_angular_velocity_rpy(2)) > error)){
         //gzdbg << "Gyro r=" << rates.X() << " p=" << rates.Y() << " y=" << rates.Z() << "\n";
+        //gzdbg << "Error too great" << std::endl;
         //
         // Trigger all plugins to publish their values
         this->world->Step(1);
-        this->SoftReset();
+        // XXX
+        //this->SoftReset();
+
         //boost::this_thread::sleep(boost::posix_time::milliseconds(100));
       } else {
           //gzdbg << "Target velocity reached! r=" << rates.X() << " p=" << rates.Y() << " y=" << rates.Z() << "\n";
@@ -488,16 +535,17 @@ void FlightControllerPlugin::FlushSensors()
 void FlightControllerPlugin::LoopThread()
 {
 
-  this->LoadDigitalTwin();
 
+  this->LoadDigitalTwin();
 	while (1){
 
 		bool ac_received = this->ReceiveAction();
 
+    //gzdbg << "Received?" << ac_received << std::endl;
 		if (!ac_received){
         continue;
     }
-    //gzdbg << "Action = " << ac->motor(0) << "," << ac->motor(1) << "," << ac->motor(2) << "," << ac->motor(3) << std::endl;
+    //gzdbg << "Action = " << this->action.motor(0) << "," << this->action.motor(1) << "," << this->action.motor(2) << "," << this->action.motor(3) << std::endl;
 
     // Handle reset command
     if (this->action.world_control() == gymfc::msgs::Action::RESET)
@@ -513,18 +561,21 @@ void FlightControllerPlugin::LoopThread()
     }
 
     this->ResetCallbackCount();
-
+    //gzdbg << "Callback count " << this->sensorCallbackCount << std::endl;
     //Forward the motor commands from the agent to each motor
     cmd_msgs::msgs::MotorCommand cmd;
     //gzdbg << "Sending motor commands to digital twin" << std::endl;
     for (unsigned int i = 0; i < this->numActuators; i++)
     {
-      //gzdbg << i << "=" << this->motor[i] << std::endl;
+      //gzdbg << i << "=" << this->action.motor(i) << std::endl;
       cmd.add_motor(this->action.motor(i));
     }
+    //gzdbg << "Publishing motor command\n";
     this->cmdPub->Publish(cmd);
+    //gzdbg << "Done publishing motor command\n";
     // Triggers other plugins to publish
     this->world->Step(1);
+    //gzdbg << "Waiting...\n";
     this->WaitForSensorsThenSend();
 	}
 }
@@ -563,6 +614,13 @@ void FlightControllerPlugin::WaitForSensorsThenSend()
     //gzdbg << "Callback count = " << this->sensorCallbackCount << std::endl;
     this->callbackCondition.wait(lock);
   }
+  /*
+  while (this->sensorCallbackCount < 0)
+  {
+        boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
+
+  }
+  */
   //gzdbg << "Sending state"<<std::endl;
   this->SendState();
 }
@@ -614,12 +672,20 @@ bool FlightControllerPlugin::ReceiveAction()
     return false;
   }
   //gzdbg << "Size " << recvSize << " Data " << buf << std::endl;
+  /*
+  for (int i = 0; i < recvSize; ++i)
+  {
+        std::cout << std::hex << std::setfill('0') << std::setw(2) << (int)buf[i] << " ";
+  }
+  std::cout << std::endl;
+  */
+
   std::string msg;
   // Do the reassignment because protobuf needs string
   msg.assign(buf, recvSize);
   this->action.ParseFromString(msg);
-  //gzdbg << " Motor Size " << ac.motor_size() << std::endl;
-  //gzdbg << " World Control " << ac.world_control() << std::endl;
+  //gzdbg << " Motor Size " << this->action.motor_size() << std::endl;
+  //gzdbg << " World Control " << this->action.world_control() << std::endl;
 
   return true; 
 }
@@ -631,7 +697,7 @@ void FlightControllerPlugin::SendState() const
   this->state.SerializeToString(&buf);
 
   //gzdbg << " Buf data= " << buf.data() << std::endl;
-  //gzdbg << " Buf size= " << buf.size() << std::endl;
+  //gzdbg << "State Buf size= " << buf.size() << std::endl;
   ::sendto(this->handle,
            buf.data(),
            buf.size(), 0,

@@ -49,6 +49,8 @@ namespace gazebo
   const std::string DIGITAL_TWIN_ATTACH_LINK = "base_link";
   const std::string kTrainingRigModelName = "attitude_control_training_rig";
 
+  const std::string kAircraftConfigFileName = "libAircraftConfigPlugin.so";
+
   typedef const boost::shared_ptr<const sensor_msgs::msgs::Imu> ImuPtr;
   typedef const boost::shared_ptr<const sensor_msgs::msgs::EscSensor> EscSensorPtr;
 
