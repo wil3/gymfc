@@ -9,3 +9,5 @@ Makefile
 CMakeCache.txt
 **/CMakeFiles/*
 .vimrc
+gymfc.json
+env/
