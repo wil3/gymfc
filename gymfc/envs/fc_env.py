@@ -19,6 +19,7 @@ import json
 logger = logging.getLogger("gymfc")
 from gymfc.msgs import State_pb2 
 from gymfc.msgs import Action_pb2 
+from abc import ABC, abstractmethod
 
 class ActionPacket:
     def __init__(self, motor, world_control=Action_pb2.Action.STEP):
@@ -36,6 +37,7 @@ class ActionPacket:
     def encode(self):
         """  Encode packet data"""
         msg = self.ac.SerializeToString() 
+        #print ("Sending to Gazebo size=", len(msg), " ",   msg.hex())
         return msg
 
     def __str__(self):
@@ -98,7 +100,7 @@ class ActionProtocol:
         loop = asyncio.get_event_loop()
         loop.stop()
 
-class FlightControlEnv(gym.Env):
+class FlightControlEnv(ABC):
     """ A generic OpenAI flight control gym environment.
     
     This class must be extended to implement the task whether for 
@@ -115,11 +117,11 @@ class FlightControlEnv(gym.Env):
 
     """ This is the name of the environment variable
     that must be set to the JSON configuration file
-    before the environment is created."""
+    before the environment is created. """
     GYMFC_CONFIG_ENV_VAR = "GYMFC_CONFIG"
 
     """ Max tries when connecting to Gazebo each 
-    with a 1 second timeout."""
+    with a 1 second timeout. """
     MAX_CONNECT_TRIES = 60
 
     def __init__(self):
@@ -141,6 +143,7 @@ class FlightControlEnv(gym.Env):
 
         #TODO Move to the constructor of who inherits it?
         # Set up the action/obs spaces
+
         """
         action_low = np.array([self.output_range[0]] * self.motor_count)
         action_high = np.array([self.output_range[1]] * self.motor_count)
@@ -157,6 +160,7 @@ class FlightControlEnv(gym.Env):
         self.sim_stats["packets_dropped"] = 0
         self.sim_stats["time_start_seconds"] = time.time()
 
+        print ("Sending to Gazebo port ", self.aircraft_port)
         # Connect to the Aircraft plugin
         writer = self.loop.create_datagram_endpoint(
             lambda: ActionProtocol(),
@@ -169,19 +173,30 @@ class FlightControlEnv(gym.Env):
         """ Load the JSON configuration file defined by the environment 
         variable """
 
-        if self.GYMFC_CONFIG_ENV_VAR not in os.environ:
-            message = (
-                "Environment variable {} not set. " +
-                "Before running the environment please execute, " + 
-                "'export {}=path/to/config/file' " +
-                "or add the variable to your .bashrc."
-            ).format(self.GYMFC_CONFIG_ENV_VAR, self.GYMFC_CONFIG_ENV_VAR)
-            raise ConfigLoadException(message)
+        # First try loading from default location 
+        current_dir = os.path.dirname(__file__)
+        default_config_path = os.path.join(current_dir, "../../gymfc.json")
+        config_path = None
+        if not os.path.isfile(default_config_path):
+            print ("Warning, default config file gymfc.json not found at ", default_config_path, ". Will try to load from environment variable.")
+            if self.GYMFC_CONFIG_ENV_VAR not in os.environ:
+                message = (
+                    "Environment variable {} not set. " +
+                    "Before running the environment please execute, " + 
+                    "'export {}=path/to/config/file' " +
+                    "or add the variable to your .bashrc."
+                ).format(self.GYMFC_CONFIG_ENV_VAR, self.GYMFC_CONFIG_ENV_VAR)
+                raise ConfigLoadException(message)
 
-        config_path = os.environ[self.GYMFC_CONFIG_ENV_VAR]
-        if not os.path.isfile(config_path):
-            message = "Config file '{}' does not exist.".format(config_path)
-            raise ConfigLoadException(message)
+            env_config_path = os.environ[self.GYMFC_CONFIG_ENV_VAR]
+            if not os.path.isfile(config_path):
+                message = "Config file '{}' does not exist.".format(config_path)
+                raise ConfigLoadException(message)
+            else:
+                config_path = env_config_path
+        else:
+            config_path = default_config_path
+
 
         with open(config_path, "r") as f:
             cfg = json.load(f)
@@ -205,11 +220,14 @@ class FlightControlEnv(gym.Env):
             #self.output_range = cfg["env"]["agent_output_range"]
 
             # Digital twin
-            self.aircraft_model_dir = cfg["digital_twin"]["model_dir"]
-            self.aircraft_model = cfg["digital_twin"]["model"]
-            self.aircraft_plugin_dir = cfg["digital_twin"]["plugin_dir"]
-            self.motor_count = cfg["digital_twin"]["motor_count"]
-            self.sensor_cfg = cfg["digital_twin"]["sensors"]
+            digitaltwin_config_path = cfg["digitaltwin_config"]
+            if not os.path.isfile(digitaltwin_config_path):
+                message = "Digital twin config file  at location '{}' does not exist. Are you sure you added this to your configuration?".format(digitaltwin_config_path)
+                raise ConfigLoadException(message)
+
+            # Load the digital twin config
+            with open(digitaltwin_config_path, "r") as f1:
+                self.digitaltwin_cfg = json.load(f1)
 
     def step_sim(self, ac):
         """ Take a single step in the simulator and return the current 
@@ -234,7 +252,7 @@ class FlightControlEnv(gym.Env):
         # Special case first
         ob = [] 
         # Now rest of the sensors
-        for sensor in self.sensor_cfg["measurements"]:
+        for sensor in self.digitaltwin_cfg["sensors"]["measurements"]:
             if hasattr(self.sensor_values, sensor["name"]):
                 val = list(getattr(self.sensor_values, sensor["name"]))
                 # Scale before adding
@@ -353,17 +371,17 @@ class FlightControlEnv(gym.Env):
         # Pass the number of motors to the plugin 
         # TODO If we find there are to many parameters to 
         # pass to the plugin switch to JSON
-        os.environ["GYMFC_NUM_MOTORS"] = str(self.motor_count)
+        os.environ["GYMFC_NUM_MOTORS"] = str(self.digitaltwin_cfg["motor_count"])
 
         # Port the aircraft reads in through this environment variable,
         # this is the network channel set up to pass sensor and ESC
         # data back and forth
         os.environ["GYMFC_SITL_PORT"] = str(self.aircraft_port)
 
-        os.environ["GYMFC_DIGITAL_TWIN_SDF"] = self.aircraft_model
+        os.environ["GYMFC_DIGITAL_TWIN_SDF"] = self.digitaltwin_cfg["model"]
 
         # The flight controller needs to know which events to listen for
-        os.environ["GYMFC_SUPPORTED_SENSORS"] = ",".join(self.sensor_cfg["supported"])
+        os.environ["GYMFC_SUPPORTED_SENSORS"] = ",".join(self.digitaltwin_cfg["sensors"]["supported"])
 
         # Source the gazebo setup file to set up vars needed by the simuluator
         self.update_env_variables(self.setup_file)
@@ -380,10 +398,10 @@ class FlightControlEnv(gym.Env):
 
         # Add the new paths
         os.environ["GAZEBO_MODEL_PATH"] += (os.pathsep + model_path + os.pathsep
-        + self.aircraft_model_dir)
+        + self.digitaltwin_cfg["model_dir"])
         os.environ["GAZEBO_RESOURCE_PATH"] += os.pathsep + world_path
         os.environ["GAZEBO_PLUGIN_PATH"] += (os.pathsep + plugin_path + os.pathsep +
-self.aircraft_plugin_dir)
+self.digitaltwin_cfg["plugin_dir"])
 
 
         print ("Model Path=", os.environ["GAZEBO_MODEL_PATH"])
@@ -452,7 +470,7 @@ self.aircraft_plugin_dir)
         class. """
         self.last_sim_time = -self.stepsize
         # Motor values are ignored during a reset so just send whatever
-        ob = self.loop.run_until_complete(self._step_sim(np.zeros(self.motor_count), world_control=Action_pb2.Action.RESET))
+        ob = self.loop.run_until_complete(self._step_sim(np.zeros(self.digitaltwin_cfg["motor_count"]), world_control=Action_pb2.Action.RESET))
         assert np.isclose(self.sim_time, 0.0, 1e-6), "sim time after reset is incorrect, {} ".format(self.sim_time)
         self.on_reset()
         self.on_observation(ob)
@@ -471,6 +489,10 @@ self.aircraft_plugin_dir)
             A tuple consisting of (self.state(), reward, done, info).
         """
         #raise NotImplementedError
+
+    def step2(self, ac):
+        ob = self.step_sim(ac)
+        return ob, self.is_done()
 
     def step(self, ac):
         """ OpenAI interface, take one step in the environment
@@ -498,30 +520,26 @@ self.aircraft_plugin_dir)
         graph."""
         return ac
 
+    @abstractmethod
     def on_observation(self, ob):
         """ Callback that an observation is ready """
-        raise NotImplementedError
+        return
 
+    @abstractmethod
     def on_reset(self):
         """ Callback that a reset is occuring. Implement this function to 
         reset specific environment states."""
-        raise NotImplementedError
+        return
 
+    @abstractmethod
     def is_done(self):
-        """ Return whether the episode is done 
+        """ Return whether simulation is done 
         
         Returns:
             True if done"""
-        raise NotImplementedError
+        return
 
-    def reward(self):
-        """ Return reward for current state
-
-        Returns:
-            Numerical value representing the reward
-        """
-        raise NotImplementedError
-
+    @abstractmethod
     def state(self):
         """ State returned to the agent may consist more than just
         the current step observation (i.e. a history of observations).
@@ -531,8 +549,9 @@ self.aircraft_plugin_dir)
         Returns:
             A numpy array corresponding to the current state.
         """
-        raise NotImplementedError
+        return
 
+    @abstractmethod
     def desired_state(self):
         """ Returns the current desired state. Note will be called multiple times 
         throughout the task allowing for dynamically changing desired states therefore
@@ -542,7 +561,7 @@ self.aircraft_plugin_dir)
         
         Returns:
             A numpy array representing the current desired state."""
-        raise NotImplementedError
+        return
 
 
 
