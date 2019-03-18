@@ -232,7 +232,6 @@ class FlightControlEnv(ABC):
     def step_sim(self, ac):
         """ Take a single step in the simulator and return the current 
         observations.
-         
         Args:
             ac (np.array): Action to take in the environment bounded by 
             output range specificed in config.
@@ -482,31 +481,6 @@ self.digitaltwin_cfg["plugin_dir"])
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
-
-    #def step(self):
-        """ OpenAI interface, take one step in the environment
-        Returns:
-            A tuple consisting of (self.state(), reward, done, info).
-        """
-        #raise NotImplementedError
-
-    def step2(self, ac):
-        ob = self.step_sim(ac)
-        return ob, self.is_done()
-
-    def step(self, ac):
-        """ OpenAI interface, take one step in the environment
-        Args:
-            ac (np.array) An array of control signals
-
-        Returns:
-            A tuple consisting of (self.state(), reward, done, info).
-        """
-        ac = self.on_action(ac)
-        ob = self.step_sim(ac)
-        self.on_observation(ob)
-        #print ("Obs=", self.obs)
-        return self.state(), self.reward(), self.is_done(), {}
 
     def render(self, mode='human'):
         """ Launch the Gazebo client """
