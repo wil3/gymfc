@@ -307,7 +307,7 @@ class FlightControlEnv(ABC):
         self.last_sim_time = self.sim_time 
         self.sim_stats["steps"] += 1
 
-        return self._flatten_obs()
+        return self._flatten_ob()
     
     def _signal_handler(self, signal, frame):
         print("Ctrl+C detected, shutting down gazebo and application")
