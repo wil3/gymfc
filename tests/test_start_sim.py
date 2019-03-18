@@ -1,31 +1,26 @@
-
 import argparse
-import gym
-import gymfc
-import matplotlib.pyplot as plt
-import numpy as np
-from mpi4py import MPI
 import math
 import os
 import time
-from gymfc.envs.gazebo_env import GazeboEnv
+from gymfc.envs.fc_env import FlightControlEnv 
 
 
-class Sim(GazeboEnv):
-    def step(self):
-        pass
-
+class StartSim(FlightControlEnv):
     def state(self):
-        return np.ones(7)
-
-    def sample_target(self):
         pass
-
+    def desired_state(self):
+        pass
+    def is_done(self):
+        pass
+    def on_observation(self):
+        pass
+    def on_reset(self):
+        pass
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser("Evaluate a PID controller")
-    parser.add_argument('config', help='')
+    parser = argparse.ArgumentParser("Start the simulator so it can be inspected.")
+    parser.add_argument('config', help="Path to the GymFC configuration JSON file.")
 
     args = parser.parse_args()
     config_path = args.config
@@ -33,5 +28,6 @@ if __name__ == "__main__":
     os.environ["GYMFC_CONFIG"] = config_path
 
 
-    env = Sim()
+    env = StartSim()
     env.render()
+

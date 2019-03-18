@@ -1,41 +1,44 @@
-
 import argparse
-import gym
-import gymfc
-import matplotlib.pyplot as plt
-import numpy as np
-from mpi4py import MPI
-import math
 import os
+from gymfc.envs.fc_env import FlightControlEnv 
+import numpy as np
 import time
-from gymfc.envs.gazebo_env import GazeboEnv
 
-def eval(env, ac):
+def step_sim(env, ac, delay=0):
     """ Evaluate an environment with the given policy """
-    ob = env.reset()
+    #ob = env.reset()
     while True:
-        ob, reward, done, info = env.step(ac)
-        if done:
+        ob = env.step_sim(ac)
+
+        if delay > 0:
+            time.sleep(delay)
+        if env.is_done():
             break
     env.close()
 
-class Sim(GazeboEnv):
-    def step(self, ac):
-        self.step_sim(ac)
-        done = False
-        return self.state(), 0, done, {} 
-
+class Sim(FlightControlEnv):
     def state(self):
-        return np.zeros(7)
+        pass
 
-    def sample_target(self):
-        return np.zeros(3)
+    def desired_state(self):
+        pass
 
+    def is_done(self):
+        return self.sim_time > 1
+
+    def on_observation(self):
+        pass
+
+    def on_reset(self):
+        pass
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser("")
-    parser.add_argument('config', help='')
+    parser = argparse.ArgumentParser("Step the simulator with the given motor values.")
+    parser.add_argument('config', help="Path to the GymFC configuration JSON file.")
+    parser.add_argument('value', nargs='+', type=float, help="Control signals")
+    parser.add_argument('--delay', type=float, help="Second delay betwee steps")
+
 
     args = parser.parse_args()
     config_path = args.config
@@ -45,4 +48,4 @@ if __name__ == "__main__":
 
     env = Sim()
     env.render()
-    eval(env, np.ones(4))
+    step_sim(env, np.array(args.value), delay=args.delay)
