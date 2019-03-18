@@ -242,25 +242,20 @@ class FlightControlEnv(ABC):
 
         return self.loop.run_until_complete(self._step_sim(ac))
 
-    def _state_to_ob(self):
-        """ Convert the state packet returned from the digital twin to a single 
-        array that can be used as the observation for neural network input """
-        # TODO Linear rescale?
-        # https://stackoverflow.com/questions/5294955/how-to-scale-down-a-range-of-numbers-with-a-known-min-and-max-value
-        #
-        # Special case first
+    def _flatten_ob(self):
+        """ Convert the state packet with observations returned from the digital twin to a single 
+        1D array that can be used as direct input to the agent. 
+        
+        Note: Subclass must handle any scaling or normalization
+        
+        Returns: 
+            Numpy array order maintained from aircraft configuration file."""
         ob = [] 
         # Now rest of the sensors
         for sensor in self.digitaltwin_cfg["sensors"]["measurements"]:
             if hasattr(self.sensor_values, sensor["name"]):
                 val = list(getattr(self.sensor_values, sensor["name"]))
-                # Scale before adding
-                # TODO Change this to linear rescale
-                if "range" in sensor:
-                    distance = sensor["range"][1] - sensor["range"][0]
-                    ob += (np.array(val)/distance).tolist()
-                else:
-                    ob += val
+                ob += val
             else:
                 raise Exception("Could not find sensor ", sensor["name"], " in State packet.")
 
@@ -312,7 +307,7 @@ class FlightControlEnv(ABC):
         self.last_sim_time = self.sim_time 
         self.sim_stats["steps"] += 1
 
-        return self._state_to_ob()
+        return self._flatten_obs()
     
     def _signal_handler(self, signal, frame):
         print("Ctrl+C detected, shutting down gazebo and application")
@@ -462,7 +457,7 @@ self.digitaltwin_cfg["plugin_dir"])
         self.kill_sim()
 
     def reset(self):
-        """ OpenAI interface, reset the environment.
+        """ Reset the environment (compatible with OpenAI API).
         
         Warning: When inheriting this class you will most likely need to override
         this method and call super to reset any internal state used in the child 
@@ -486,13 +481,6 @@ self.digitaltwin_cfg["plugin_dir"])
         """ Launch the Gazebo client """
         p = subprocess.Popen(["gzclient"], shell=False)
         self.process_ids.append(p.pid)
-
-    def on_action(self, ac):
-        """ Possibly override if the child needs to do any sort of 
-        scaling or remapping of the action before sent to the digital twin. 
-        This depends on the output activation function and the neural network
-        graph."""
-        return ac
 
     @abstractmethod
     def on_observation(self, ob):
