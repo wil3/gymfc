@@ -68,4 +68,6 @@ add_library(sensor_msgs SHARED ${SEN_PROTO_SRCS})
 link_libraries(control_msgs sensor_msgs)
 
 add_library(FlightControllerPlugin SHARED FlightControllerPlugin.cpp)
+add_library(AircraftConfigPlugin SHARED AircraftConfigPlugin.cpp)
 target_link_libraries(FlightControllerPlugin ${GAZEBO_LIBRARIES})
+target_link_libraries(AircraftConfigPlugin ${GAZEBO_LIBRARIES})
