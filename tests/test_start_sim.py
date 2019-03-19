@@ -20,14 +20,11 @@ class StartSim(FlightControlEnv):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser("Start the simulator so it can be inspected.")
-    parser.add_argument('config', help="Path to the GymFC configuration JSON file.")
+    parser.add_argument('aircraftconfig', help="File path of the aircraft SDF.")
+    parser.add_argument('--gymfc-config', help="Option to override default GymFC configuration location.")
 
     args = parser.parse_args()
-    config_path = args.config
-    print ("Loading config from ", config_path)
-    os.environ["GYMFC_CONFIG"] = config_path
 
-
-    env = StartSim()
+    env = Sim(args.aircraftconfig, args.gymfc_config)
     env.render()
 

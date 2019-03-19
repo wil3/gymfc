@@ -6,7 +6,7 @@ import time
 
 def step_sim(env, ac, delay=0):
     """ Evaluate an environment with the given policy """
-    #ob = env.reset()
+    ob = env.reset()
     while True:
         ob = env.step_sim(ac)
 
@@ -17,6 +17,10 @@ def step_sim(env, ac, delay=0):
     env.close()
 
 class Sim(FlightControlEnv):
+
+    def Sim(self, aircraft_config, config=None):
+        super(self, Sim).__init__(aircraft_config, config_filepath=config)
+
     def state(self):
         pass
 
@@ -26,7 +30,7 @@ class Sim(FlightControlEnv):
     def is_done(self):
         return self.sim_time > 1
 
-    def on_observation(self):
+    def on_observation(self, ob):
         pass
 
     def on_reset(self):
@@ -35,17 +39,16 @@ class Sim(FlightControlEnv):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser("Step the simulator with the given motor values.")
-    parser.add_argument('config', help="Path to the GymFC configuration JSON file.")
-    parser.add_argument('value', nargs='+', type=float, help="Control signals")
-    parser.add_argument('--delay', type=float, help="Second delay betwee steps")
+    parser.add_argument('aircraftconfig', help="File path of the aircraft SDF.")
+    parser.add_argument('value', nargs='+', type=float, help="List of control signals, one for each motor.")
+    parser.add_argument('--gymfc-config', help="Option to override default GymFC configuration location.")
+    parser.add_argument('--delay', type=float, help="Second delay betwee steps for debugging purposes.")
 
 
     args = parser.parse_args()
-    config_path = args.config
-    print ("Loading config from ", config_path)
-    os.environ["GYMFC_CONFIG"] = config_path
 
-
-    env = Sim()
+    env = Sim(args.aircraftconfig, args.gymfc_config)
     env.render()
     step_sim(env, np.array(args.value), delay=args.delay)
+
+
