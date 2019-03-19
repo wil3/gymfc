@@ -124,18 +124,18 @@ class FlightControlEnv(ABC):
     with a 1 second timeout. """
     MAX_CONNECT_TRIES = 60
 
-    def __init__(self, aircraft_model_sdf, config_filepath=None):
+    def __init__(self, aircraft_config, config_filepath=None):
         """ Initialize the simulator
 
         Args: 
-            aircraft_model_sdf File path of the aircraft Gazebo SDF file
+            aircraft_config File path of the aircraft Gazebo SDF file
             config_filepath: If provided will override default config
         """
         # Init the seed variable, user can override this
         self.seed()
 
         try:
-            self.load_config(aircraft_model_sdf, config_filepath = config_filepath)
+            self.load_config(aircraft_config, config_filepath = config_filepath)
         except ConfigLoadException as e:
             raise SystemExit(e)
 
@@ -175,7 +175,7 @@ class FlightControlEnv(ABC):
 
         self._start_sim()
 
-    def load_config(self, aircraft_model_sdf, config_filepath = None):
+    def load_config(self, aircraft_config, config_filepath = None):
         """ Load the JSON configuration file defined by the environment 
         variable """
 
@@ -223,12 +223,12 @@ class FlightControlEnv(ABC):
 
 
             # Digital twin
-            if not os.path.isfile(aircraft_model_sdf):
+            if not os.path.isfile(aircraft_config):
                 message = "Aircraft SDF file  at location '{}' does not exist.".format(digitaltwin_config_path)
                 raise ConfigLoadException(message)
 
         # Load the digital twin config
-        with open(aircraft_model_sdf, "r") as f:
+        with open(aircraft_config, "r") as f:
             self.digitaltwin_cfg = json.load(f)
 
     def step_sim(self, ac):
