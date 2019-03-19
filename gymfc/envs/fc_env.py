@@ -124,12 +124,18 @@ class FlightControlEnv(ABC):
     with a 1 second timeout. """
     MAX_CONNECT_TRIES = 60
 
-    def __init__(self):
+    def __init__(self, aircraft_model_sdf, config_filepath=None):
+        """ Initialize the simulator
+
+        Args: 
+            aircraft_model_sdf File path of the aircraft Gazebo SDF file
+            config_filepath: If provided will override default config
+        """
         # Init the seed variable, user can override this
         self.seed()
 
         try:
-            self.load_config()
+            self.load_config(aircraft_model_sdf, config_filepath = config_filepath)
         except ConfigLoadException as e:
             raise SystemExit(e)
 
@@ -169,36 +175,36 @@ class FlightControlEnv(ABC):
 
         self._start_sim()
 
-    def load_config(self):
+    def load_config(self, aircraft_model_sdf, config_filepath = None):
         """ Load the JSON configuration file defined by the environment 
         variable """
 
-        # First try loading from default location 
+        # Priotiry of load, constructor -> environment variable -> default 
         current_dir = os.path.dirname(__file__)
         default_config_path = os.path.join(current_dir, "../../gymfc.json")
-        config_path = None
-        if not os.path.isfile(default_config_path):
-            print ("Warning, default config file gymfc.json not found at ", default_config_path, ". Will try to load from environment variable.")
-            if self.GYMFC_CONFIG_ENV_VAR not in os.environ:
-                message = (
-                    "Environment variable {} not set. " +
-                    "Before running the environment please execute, " + 
-                    "'export {}=path/to/config/file' " +
-                    "or add the variable to your .bashrc."
-                ).format(self.GYMFC_CONFIG_ENV_VAR, self.GYMFC_CONFIG_ENV_VAR)
-                raise ConfigLoadException(message)
-
-            env_config_path = os.environ[self.GYMFC_CONFIG_ENV_VAR]
-            if not os.path.isfile(config_path):
-                message = "Config file '{}' does not exist.".format(config_path)
+        if config_filepath:
+            if not os.path.isfile(config_filepath):
+                message = "Error, provided configuration file at constructor but not found {}, aborting.".format(config_filepath)
                 raise ConfigLoadException(message)
             else:
-                config_path = env_config_path
+                config_filepath = config_filepath
+
+        elif self.GYMFC_CONFIG_ENV_VAR in os.environ:
+            env_config_path = os.environ[self.GYMFC_CONFIG_ENV_VAR]
+            if not os.path.isfile(env_config_path):
+                message = "Configuration file set by environment varaiable '{}' does not exist.".format(env_config_path)
+                raise ConfigLoadException(message)
+            else:
+                config_filepath = env_config_path
         else:
-            config_path = default_config_path
+            if not os.path.isfile(default_config_path):
+                message = "Default configuration file missing, aborting"
+                raise ConfigLoadException(message)
+            else:
+                config_filepath = default_config_path
 
 
-        with open(config_path, "r") as f:
+        with open(config_filepath, "r") as f:
             cfg = json.load(f)
 
             # Gazebo configuration
@@ -215,19 +221,15 @@ class FlightControlEnv(ABC):
                     *cfg["gazebo"]["network"]["fc"]["port_range"])
             )
 
-            # Env
-            #self.omega_bounds = cfg["env"]["target_angular_velocity_range"]
-            #self.output_range = cfg["env"]["agent_output_range"]
 
             # Digital twin
-            digitaltwin_config_path = cfg["digitaltwin_config"]
-            if not os.path.isfile(digitaltwin_config_path):
-                message = "Digital twin config file  at location '{}' does not exist. Are you sure you added this to your configuration?".format(digitaltwin_config_path)
+            if not os.path.isfile(aircraft_model_sdf):
+                message = "Aircraft SDF file  at location '{}' does not exist.".format(digitaltwin_config_path)
                 raise ConfigLoadException(message)
 
-            # Load the digital twin config
-            with open(digitaltwin_config_path, "r") as f1:
-                self.digitaltwin_cfg = json.load(f1)
+        # Load the digital twin config
+        with open(aircraft_model_sdf, "r") as f:
+            self.digitaltwin_cfg = json.load(f)
 
     def step_sim(self, ac):
         """ Take a single step in the simulator and return the current 
