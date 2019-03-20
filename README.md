@@ -1,10 +1,8 @@
 # GymFC
 
-GymFC is an [OpenAI Gym](https://github.com/openai/gym) environment specifically
-designed for
-developing intelligent flight control systems using reinforcement learning. This
+GymFC is a simulation environment for developing flight control systems. 
 environment is meant to serve as a tool for researchers to benchmark their
-controllers to progress the state-of-the art of intelligent flight control.
+controllers to progress the state-of-the art of flight control.
 Our tech report is available at [https://arxiv.org/abs/1804.04154](https://arxiv.org/abs/1804.04154)  providing details of the
 environment and  benchmarking of PPO, TRPO and DDPG using [OpenAI Baselines](https://github.com/openai/baselines). We compare the performance results to a PID controller and find PPO to out perform PID in regards to rise time and overall error. Please use the following BibTex entry to cite our
 work,
@@ -17,16 +15,58 @@ Eprint = {arXiv:1804.04154},
 }
 ```
 
+# Features
+
+* Support for IMU and ESC sensors
+* Aircraft agnostic - support for any type of aircraft just configure number of
+  actuators and sensors.
+* Digital twin independence - digital twin is developed external to GymFC
+  allowing separate versioning.
+* Google protobuf aircraft digital twin API for publishing control
+  signals and subscribing to sensor data. 
+* Flexible agent interface allowing controller development for any type of flight control systems.
+* Compatible with OpenAI environments.
+* Support for Gazebo 8 and 9. Gazebo plugins are built dynamically depending on
+  your installed version. 
+* 
+* Configurable through JSON
+
+
+# News
+
+* March 2019 - GymFC v0.2.0 is released. 
+The new GymFC version is a major rewrite with substantial architectural
+change emphasizing core princiles such as ocntroller development for a specific aircraft.
+GymFC is now essentially a generic flight control environment middleware between the aircraft digital twin and the agent interface. Users now are responsible for implementing the agent interface and the digital twin; which are both unique to the aircraft.
+* December 2018 - Our GymFC manuscript is accepted to the journal ACM Transactions on Cyber-Physical Systems.
+* November 2018 - Flight controller synthesized with GymFC achieves stable
+  flight in [Neuroflight](https://github.com/wil3/neuroflight).
+* September 2018 - GymFC v0.1.0 is released.
+* April 2018 - Pre-print of our paper is published to [arXiv](https://arxiv.org/abs/1804.04154). 
+
+
 # Installation 
+
 Note, Ubuntu is the only OS currently supported. Please submit a PR for the
 README.md if you are
 able to get it working on another platform.   
-1. Download and install [Gazebo 9](http://gazebosim.org/download). Tested on Ubuntu 16.04 LTS and 18.04 LTS.
+1. Download and install [Gazebo 9](http://gazebosim.org/download). Tested on
+   Ubuntu 16.04 LTS and 18.04 LTS.  Make sure you also install the dev package, `sudo apt-get install libgazebo9-dev` which will be used to build the Gazebo plugins.
+2. (Optional) It is suggested to set up a [virtual environment](https://docs.python.org/3/library/venv.html). From the project root,
+   `python3 -m venv env`. This will create an environment named `env` which
+will be ignored by git. To enable the virtual environment, `source
+env/bin/activate` and to deactivate, `deactivate`.  
 2. From root directory of this project, `pip3 install .`
+3. Rename `gymfc.json.template` to `gymfc.json`
 
-# Iris PID Example
+# Verifying Installation 
 To verify you have installed the environment correctly it is recommended to run
-the supplied PID controller controlling an Iris quadcopter model. This example
+the PID controller
+https://github.com/wil3/gymfc-envs 
+
+controlling an Iris quadcopter model.
+
+his example
 uses the configuration file `examples/config/iris.config`. Before running the
 example verify the configuration, specifically that the Gazebo `SetupFile` is pointing to the correct location.
 The example requires additional Python modules, from `examples` run,
@@ -65,43 +105,10 @@ If you plan to work with the GymFC source code you will want to install it in
 development mode, `pip3 install -e .` from the root directory. You will also
 need to build the plugin manually by running the script
 `gymfc/envs/assets/gazebo/plugins/build_plugin.sh`. 
-# Environments
 
-Different environments are available depending on the capabilities of the flight
-control system. For example new ESCs contain sensors to provide telemetry
-including the velocity of the rotor which can be used as additional state in the
-environment. Environment naming format is [prefix]\_[inputs]\_M[actuator
-count]\_[task type] where prefix=AttFC, Ep is episodic tasks, and Con is
-continuous tasks.
 
-## AttFC_GyroErr-MotorVel_M4_Ep-v0
+## Digital twin interface
 
-This environment is an episodic task to learn attitude control of a quadcopter. At the beginning of each episode the
-quadcopter is at rest. A random angular velocity is sampled and the agent must achieve this target  within
-1 second. 
+Center of thrust
+## Agent Interface
 
-**Observation Space** Box(7,) where 3 observations correspond to the angular velocity error for each axis in radians/second (i.e Ω\* − Ω) in range [-inf, inf] and 4 observations correspond
-to the angular velocity of each rotor in range [-inf, inf].
- 
-**Action Space** Box(4,) corresponding to each PWM value to be sent to the ESC in
-the range [-1, 1].
-
-**Reward** The error normalized between [-1, 0] representing how close the angular velocity is
-to the target calculated by -clip(sum(|Ω\* − Ω |)/3Ω\_max)  where the clip
-function bounds the result to [-1, 0] and  Ω\_max is the initially error from
-when the target angular velocity is set.
-
-Note: In the referenced paper different memory sizes were tested, however for PPO it was
-found additional memory did not help. At the moment for research, debugging and testing purposes environments with different memory sizes are included and can be referenced by AttFC_GyroErr1-MotorVel_M4_Ep-v0 - AttFC_GyroErr10-MotorVel_M4_Ep-v0.
-
-## AttFC_GyroErr-MotorVel_M4_Con-v0
-
-This environment is essentially the same as the episodic variant however it runs
-for 60 seconds and continually changes the target angular velocities randomly
-between [0.1, 1] seconds.
-
-## AttFC_GyroErr1_M4_Ep-v0 - AttFC_GyroErr10_M4_Ep-v0
-
-This environment supports ESCs without telemetry and only relies on the gyro
-readings as environment observations. Preliminary testing has shown memory > 1
-increases accuracy. 
