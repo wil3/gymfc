@@ -1,17 +1,24 @@
 # GymFC
 
-GymFC is a simulation environment for developing flight control systems. 
-environment is meant to serve as a tool for researchers to benchmark their
-controllers to progress the state-of-the art of flight control.
-Our tech report is available at [https://arxiv.org/abs/1804.04154](https://arxiv.org/abs/1804.04154)  providing details of the
-environment and  benchmarking of PPO, TRPO and DDPG using [OpenAI Baselines](https://github.com/openai/baselines). We compare the performance results to a PID controller and find PPO to out perform PID in regards to rise time and overall error. Please use the following BibTex entry to cite our
-work,
+GymFC is a simulation environment for developing and testing flight control systems with a focus in attitude control. 
+Intially GymFC was first introduced in the [manuscript]() "Reinforcement learning for UAV attitude control" in which the simulator was used to
+synthesize neuro-flight attitude controllers that exceeded the performance of a traditional PID controller. 
+Since the intial release of the project is has matured, and become more modular
+to support a wide range of flight control system and aircraft.
+Currently, GymFC is the primary method for developing controllers to be used in the worlds
+first neural network based
+flight control firmware [Neuroflight](https://wfk.io/neuroflight). 
+Please use the following BibTex entry to cite our work,
 ```
-@misc{1804.04154,
-Author = {William Koch and Renato Mancuso and Richard West and Azer Bestavros},
-Title = {Reinforcement Learning for UAV Attitude Control},
-Year = {2018},
-Eprint = {arXiv:1804.04154},
+@article{koch2019reinforcement,
+  title={Reinforcement learning for UAV attitude control},
+  author={Koch, William and Mancuso, Renato and West, Richard and Bestavros, Azer},
+  journal={ACM Transactions on Cyber-Physical Systems},
+  volume={3},
+  number={2},
+  pages={22},
+  year={2019},
+  publisher={ACM}
 }
 ```
 
@@ -28,7 +35,6 @@ Eprint = {arXiv:1804.04154},
 * Compatible with OpenAI environments.
 * Support for Gazebo 8 and 9. Gazebo plugins are built dynamically depending on
   your installed version. 
-* 
 * Configurable through JSON
 
 
@@ -60,30 +66,12 @@ env/bin/activate` and to deactivate, `deactivate`.
 3. Rename `gymfc.json.template` to `gymfc.json`
 
 # Verifying Installation 
-To verify you have installed the environment correctly it is recommended to run
-the PID controller
-https://github.com/wil3/gymfc-envs 
-
-controlling an Iris quadcopter model.
-
-his example
-uses the configuration file `examples/config/iris.config`. Before running the
-example verify the configuration, specifically that the Gazebo `SetupFile` is pointing to the correct location.
-The example requires additional Python modules, from `examples` run,
-```
-pip3 install -r requirements.txt
-```
-To run the example change directories to `examples/controllers` and execute,
-```
-python3 run_iris_pid.py
-```
-If your environment is installed properly you should observe a plot that
-closely resembles this step response,
-![PID Step
-Response](https://raw.githubusercontent.com/wil3/gymfc/master/images/pid-step-AttFC_GyroErr-MotorVel_M4_Ep-v0.png)
 
 
 # Development 
+
+Developing a controller in simulation consists of four components. 1) The agent,
+2) the trainer, 3) the environment and 4) the aircraft model (digital twin).
 
 GymFC's primary goal is to train controllers capable of flight in the real-world. 
  In order to construct optimal flight controllers, the aircraft used in
