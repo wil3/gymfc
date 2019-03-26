@@ -18,8 +18,9 @@ def step_sim(env, ac, delay=0):
 
 class Sim(FlightControlEnv):
 
-    def Sim(self, aircraft_config, config=None):
-        super(self, Sim).__init__(aircraft_config, config_filepath=config)
+    def __init__(self, aircraft_config, config_filepath=None, max_sim_time=1):
+        super().__init__(aircraft_config, config_filepath=config_filepath)
+        self.max_sim_time = max_sim_time
 
     def state(self):
         pass
@@ -28,7 +29,7 @@ class Sim(FlightControlEnv):
         pass
 
     def is_done(self):
-        return self.sim_time > 1
+        return self.sim_time > self.max_sim_time
 
     def on_observation(self, ob):
         pass
@@ -41,13 +42,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser("Step the simulator with the given motor values.")
     parser.add_argument('aircraftconfig', help="File path of the aircraft SDF.")
     parser.add_argument('value', nargs='+', type=float, help="List of control signals, one for each motor.")
-    parser.add_argument('--gymfc-config', help="Option to override default GymFC configuration location.")
-    parser.add_argument('--delay', type=float, help="Second delay betwee steps for debugging purposes.")
+    parser.add_argument('--gymfc-config', default=None, help="Option to override default GymFC configuration location.")
+    parser.add_argument('--delay', default=0, type=float, help="Second delay betwee steps for debugging purposes.")
+    parser.add_argument('--max-sim-time', default=1, type=float, help="Time in seconds the sim should run for.")
 
 
     args = parser.parse_args()
 
-    env = Sim(args.aircraftconfig, args.gymfc_config)
+    env = Sim(args.aircraftconfig, config_filepath=args.gymfc_config, max_sim_time=args.max_sim_time)
     env.render()
     step_sim(env, np.array(args.value), delay=args.delay)
 
