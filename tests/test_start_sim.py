@@ -5,7 +5,10 @@ import time
 from gymfc.envs.fc_env import FlightControlEnv 
 
 
-class StartSim(FlightControlEnv):
+class Sim(FlightControlEnv):
+    def Sim(self, aircraft_config, config=None):
+        super(self, Sim).__init__(aircraft_config, config_filepath=config)
+
     def state(self):
         pass
     def desired_state(self):
