@@ -53,17 +53,17 @@ GymFC is now essentially a generic flight control environment middleware between
 
 # Installation 
 
-Note, Ubuntu is the only OS currently supported. Please submit a PR for the
+Note, Ubuntu 16.04 LTS and 18.04 LTS are the only OS currently supported. Please submit a PR for the
 README.md if you are
 able to get it working on another platform.   
-1. Download and install [Gazebo 9](http://gazebosim.org/download). Tested on
-   Ubuntu 16.04 LTS and 18.04 LTS.  Make sure you also install the dev package, `sudo apt-get install libgazebo9-dev` which will be used to build the Gazebo plugins.
+1. Install [Gazebo 9](http://gazebosim.org/download) with `sudo
+   apt-get install gazebo9.`. Then the dev package required for building the plugins, `sudo apt-get install libgazebo9-dev`.
 2. (Optional) It is suggested to set up a [virtual environment](https://docs.python.org/3/library/venv.html). From the project root,
    `python3 -m venv env`. This will create an environment named `env` which
 will be ignored by git. To enable the virtual environment, `source
 env/bin/activate` and to deactivate, `deactivate`.  
 2. From root directory of this project, `pip3 install .`
-3. Rename `gymfc.json.template` to `gymfc.json`
+3. Confirm `SetupFile` in `gymfc.ini` is pointing to the correct location.
 
 # Verifying Installation 
 
