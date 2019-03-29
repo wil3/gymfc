@@ -60,7 +60,8 @@ namespace gazebo
   // sensors.
   enum Sensors {
     IMU,
-    ESC
+    ESC,
+    BATTERY
   };
 
 class FlightControllerPlugin : public WorldPlugin
@@ -82,6 +83,8 @@ class FlightControllerPlugin : public WorldPlugin
   /// \brief Dynamically load the digitial twin from the location
   // specified by the environment variable.
   private: void LoadDigitalTwin();
+
+  private: void ParseDigitalTwinSDF();
 
   /// \brief Main loop thread waiting for incoming UDP packets
 	public: void LoopThread();
@@ -193,6 +196,10 @@ class FlightControllerPlugin : public WorldPlugin
   private: std::vector<Sensors> supportedSensors;
 
   private: int numActuators;
+  private: sdf::SDFPtr sdfElement;
+  private: std::string centerOfThrustReferenceLinkName; 
+  private: ignition::math::Vector3d cot;
+  private: sdf::ElementPtr modelElement;
   };
 }
 #endif

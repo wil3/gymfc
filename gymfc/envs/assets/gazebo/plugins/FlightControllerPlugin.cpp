@@ -153,6 +153,9 @@ void FlightControllerPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf
   this->ProcessSDF(_sdf);
 
   this->LoadVars();
+
+  this->ParseDigitalTwinSDF();
+
   this->CalculateCallbackCount();
 
   this->nodeHandle = transport::NodePtr(new transport::Node());
@@ -229,38 +232,6 @@ void FlightControllerPlugin::LoadVars()
     return;
   }
 
-  //TODO parse from config plugin
-  if(const char* env_p =  std::getenv(ENV_NUM_MOTORS))
-  {
-    this->numActuators = std::stoi(env_p);
-  } else 
-  {
-    gzerr << "Environment variable " << ENV_NUM_MOTORS << " not set.\n";
-    return;
-  }
-
-  if(const char* env_p =  std::getenv(ENV_SUPPORTED_SENSORS)) 
-  {
-    std::vector<std::string> results;
-    boost::split(results, env_p, [](char c){return c == ',';});
-    for (auto  s : results) 
-    {
-      if (boost::iequals(s, "imu"))
-      {
-        this->supportedSensors.push_back(IMU);
-      } 
-      else if (boost::iequals(s, "esc"))
-      {
-        this->supportedSensors.push_back(ESC);
-      }
-
-    }
-  }
-  else 
-  {
-    gzerr << "Environment variable " << ENV_SUPPORTED_SENSORS << " not set.\n";
-    return;
-  }
 
 }
 
@@ -375,39 +346,92 @@ physics::LinkPtr FlightControllerPlugin::FindLinkByName(physics::ModelPtr _model
   return NULL;
 
 }
-void FlightControllerPlugin::LoadDigitalTwin()
+
+void FlightControllerPlugin::ParseDigitalTwinSDF()
 {
-  gzdbg << "Inserting digital twin from, " << this->digitalTwinSDF << ".\n";
    // Load the root digital twin sdf file
   const std::string sdfPath(this->digitalTwinSDF);
 
-  sdf::SDFPtr sdfElement(new sdf::SDF());
-  sdf::init(sdfElement);
-  if (!sdf::readFile(sdfPath, sdfElement))
+
+  this->sdfElement.reset(new sdf::SDF());
+  sdf::init(this->sdfElement);
+  if (!sdf::readFile(sdfPath, this->sdfElement))
   {
     gzerr << sdfPath << " is not a valid SDF file!" << std::endl;
     return;
   }
-
-  // start parsing model
-  const sdf::ElementPtr rootElement = sdfElement->Root();
+  const sdf::ElementPtr rootElement = this->sdfElement->Root();
   if (!rootElement->HasElement("model"))
   {
-    gzerr << sdfPath << " is not a model SDF file!" << std::endl;
+    gzerr << "Could not find model!" << std::endl;
     return;
   }
-  const sdf::ElementPtr modelElement = rootElement->GetElement("model");
-  const std::string modelName = modelElement->Get<std::string>("name");
-  //gzdbg << "Found " << modelName << " model!" << std::endl;
-  unsigned int startModelCount = this->world->ModelCount();
-  //this->world->InsertModelFile(sdfElement);
-  
-  this->world->InsertModelSDF(*sdfElement);
+  this->modelElement = rootElement->GetElement("model");
+
+  sdf::ElementPtr pluginPtr = this->modelElement->GetElement("plugin");
+
+  gzdbg << " Looking for plugin\n";
+  bool foundAircraftConfigPlugin = false;
+  while(pluginPtr)
+  {
+    if (pluginPtr->GetAttribute("filename")->GetAsString().compare(kAircraftConfigFileName) == 0)
+    {
+      foundAircraftConfigPlugin = true;
+      break;
+    }
+    pluginPtr = pluginPtr->GetNextElement();
+  }
+  gzdbg << " Done Looking for plugin\n";
+  if (!foundAircraftConfigPlugin)
+  {
+    gzerr << "Could not find required " << kAircraftConfigFileName << ". Aborting!" << std::endl;
+  }
+
+  const sdf::ElementPtr centerOfThrustElement = pluginPtr->GetElement("centerOfThrust");
+  this->centerOfThrustReferenceLinkName = centerOfThrustElement->Get<std::string>("link");
+  gzdbg << "CoT link=" << this->centerOfThrustReferenceLinkName << std::endl;
+  this->cot = centerOfThrustElement->Get<ignition::math::Vector3d>("offset");
+  gzdbg << "Got COT from plugin " << this->cot.X() << " " << this->cot.Y() << " " << this->cot.Z()  << std::endl;
+
+  this->numActuators  = pluginPtr->GetElement("motorCount")->Get<int>();
+  gzdbg << "Num motors " << this->numActuators << std::endl;
+
+  sdf::ElementPtr sensorsSDF = pluginPtr->GetElement("sensors");
+  if (!sensorsSDF)
+  {
+   gzerr << "Could not find any sensors\n"; 
+  }
+  sdf::ElementPtr sensorSDF = sensorsSDF->GetElement("sensor");
+  while (sensorSDF)
+  {
+    std::string type = sensorSDF->GetAttribute("type")->GetAsString();
+
+    if (boost::iequals(type, "imu"))
+    {
+      this->supportedSensors.push_back(IMU);
+    } 
+    else if (boost::iequals(type, "esc"))
+    {
+      this->supportedSensors.push_back(ESC);
+    }
+    else if (boost::iequals(type, "battery"))
+    {
+      this->supportedSensors.push_back(BATTERY);
+    }
+    sensorSDF = sensorSDF->GetNextElement("sensor");
+  }
+
+}
+void FlightControllerPlugin::LoadDigitalTwin()
+{
+  gzdbg << "Inserting digital twin from, " << this->digitalTwinSDF << ".\n";
 
   // TODO Better way to do this?
   // It appears the inserted model is not available in the world
   // right away, maybe due to message passing?
   // Poll until its there
+  unsigned int startModelCount = this->world->ModelCount();
+  this->world->InsertModelSDF(*this->sdfElement);
   while (1)
   {
     unsigned int modelCount = this->world->ModelCount();
@@ -415,15 +439,13 @@ void FlightControllerPlugin::LoadDigitalTwin()
     {
       break;
     } else {
-      gazebo::common::Time::MSleep(1000);
+      gazebo::common::Time::MSleep(100);
     }
   }
-  
-  //gzdbg << "Num models=" << this->world->ModelCount() << std::endl;
-  for (unsigned int i=0; i<this->world->ModelCount(); i++)
-  {
-    //gzdbg << "Model " << i << ":" << this->world->ModelByIndex(i)->GetScopedName() << std::endl;
-  }
+
+  // start parsing model
+  const std::string modelName = this->modelElement->Get<std::string>("name");
+  //gzdbg << "Found " << modelName << " model!" << std::endl;
 
   // Now get a pointer to the model
   physics::ModelPtr model = this->world->ModelByName(modelName);
@@ -432,69 +454,27 @@ void FlightControllerPlugin::LoadDigitalTwin()
     return;
   }
 
-  //model->PluginInfo
-  const std::string uri = model->URI().Str();
-  ignition::msgs::Plugin_V plugins;
-  bool success;
-  common::URI pluginUri;
-  //pluginUri.Parse(model->URI().Str() + "data://world/default/model/nf1/plugin/");
-  pluginUri.Parse(model->URI().Str() + "/plugin/");
-  model->PluginInfo(pluginUri, plugins, success);
-  if (!success)
-  {
-    gzdbg << "Could not access plugin at URI " << uri << " to load aircraft configuration. Aborting!" <<  std::endl;
-    return;
-  }
-  ignition::msgs::Plugin aircraftConfigPlugin;
-  bool foundAircraftConfigPlugin = false;
-  for (auto & plugin : plugins.plugins()) 
-  {
-      gzdbg << "Plugin filename " << plugin.filename() << std::endl;
-      if (plugin.filename().compare(kAircraftConfigFileName) == 0)
-      {
-        aircraftConfigPlugin = plugin;
-        foundAircraftConfigPlugin = true;
-        break;
-      }
-  }
-  if (!foundAircraftConfigPlugin)
-  {
-    gzerr << "Could not find required " << kAircraftConfigFileName << ". Aborting!" << std::endl;
-  }
-  auto pluginSDF = util::Convert(aircraftConfigPlugin);
-
-  const sdf::ElementPtr centerOfThrustElement = pluginSDF->GetElement("centerOfThrust");
-  std::string centerOfThrustReferenceLinkName = centerOfThrustElement->Get<std::string>("link");
-  gzdbg << "CoT link=" << centerOfThrustReferenceLinkName << std::endl;
-  ignition::math::Vector3d cot = centerOfThrustElement->Get<ignition::math::Vector3d>("offset");
-  gzdbg << "Got COT from plugin " << cot.X() << " " << cot.Y() << " " << cot.Z()  << std::endl;
-
-  
   physics::ModelPtr supportModel = this->world->ModelByName(kTrainingRigModelName);
   if (!supportModel){
     gzerr << "Could not find training rig"<<std::endl;
     return;
   }
-
   
-  physics::LinkPtr centerOfThrustReferenceLink = FindLinkByName(model, centerOfThrustReferenceLinkName);
+  physics::LinkPtr centerOfThrustReferenceLink = FindLinkByName(model, this->centerOfThrustReferenceLinkName);
   if (!centerOfThrustReferenceLink){
     gzerr << "Could not find frame link"<<std::endl;
     return;
   }
-  //joint->Load(supportModel->GetLink("pivot"), centerOfThrustReferenceLink, ignition::math::Pose3d(0, 0, 1, 0, 0, 0));
   gazebo::physics::JointPtr joint;
   joint = this->world->Physics()->CreateJoint("ball");
-  //joint = this->world->Physics()->CreateJoint("fixed");
   joint->SetName("ball_joint");
-  //joint->Attach(supportModel->GetLink("pivot"), centerOfThrustReferenceLink);
-  //joint->Load(supportModel->GetLink("pivot"), centerOfThrustReferenceLink, ignition::math::Pose3d(0, 0, 0, 0, 0, 0));
   joint->Attach(centerOfThrustReferenceLink, supportModel->GetLink("pivot"));
-  joint->Load( centerOfThrustReferenceLink,supportModel->GetLink("pivot"), ignition::math::Pose3d(cot.X(), cot.Y(), cot.Z(), 0, 0, 0));
+  joint->Load( centerOfThrustReferenceLink, supportModel->GetLink("pivot"), 
+      ignition::math::Pose3d(this->cot.X(), this->cot.Y(), this->cot.Z(), 0, 0, 0));
   joint->Init();
   
   // This is actually great because we've removed the ground plane so there is no possible collision
-  gzdbg << "Ball joint created\n";
+  gzdbg << "Aircraft model fixed to world\n";
 }
 
 void FlightControllerPlugin::FlushSensors()
@@ -593,6 +573,7 @@ void FlightControllerPlugin::CalculateCallbackCount()
   for (auto  sensor : this->supportedSensors)
   {
     switch(sensor){
+      case BATTERY:
       case IMU:
         this->numSensorCallbacks += 1;
         break;
