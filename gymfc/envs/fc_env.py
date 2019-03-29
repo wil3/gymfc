@@ -170,7 +170,7 @@ class FlightControlEnv(ABC):
 
         # Priotiry of load, constructor -> environment variable -> default 
         current_dir = os.path.dirname(__file__)
-        default_config_path = os.path.join(current_dir, "../../gymfc.json")
+        default_config_path = os.path.join(current_dir, "../../gymfc.ini")
         if config_filepath:
             if not os.path.isfile(config_filepath):
                 message = "Error, provided configuration file at constructor but not found {}, aborting.".format(config_filepath)
@@ -192,23 +192,25 @@ class FlightControlEnv(ABC):
             else:
                 config_filepath = default_config_path
 
+        cfg = configparser.ConfigParser()
+        cfg.read(config_filepath)
+        default = cfg["DEFAULT"]
 
-        with open(config_filepath, "r") as f:
-            cfg = json.load(f)
+        # Gazebo configuration
+        self.setup_file = default["SetupFile"]
+        self.world = default["World"]
+        self.host = default["Hostname"]
 
-            # Gazebo configuration
-            self.setup_file = cfg["gazebo"]["setup_file"]
-            self.world = cfg["gazebo"]["world"]
-            self.host = cfg["gazebo"]["network"]["hostname"]
-
-            self.gz_port = self._get_open_port(
-                np.random.randint(
-                    *cfg["gazebo"]["network"]["gzserver"]["port_range"])
-            )
-            self.aircraft_port = self._get_open_port(
-                np.random.randint(
-                    *cfg["gazebo"]["network"]["fc"]["port_range"])
-            )
+        self.gz_port = self._get_open_port(
+            np.random.randint(
+                default.getint("GazeboNetworkPortRangeBegin"),
+                default.getint("GazeboNetworkPortRangeEnd"))
+        )
+        self.aircraft_port = self._get_open_port(
+            np.random.randint(
+                default.getint("FCPluginPortRangeBegin"),
+                default.getint("FCPluginPortRangeEnd"))
+        )
 
 
 
