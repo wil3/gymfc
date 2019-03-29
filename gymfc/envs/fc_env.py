@@ -1,6 +1,3 @@
-import gym
-from gym import error, spaces, utils
-from gym.utils import seeding
 import asyncio
 import struct
 import math
@@ -20,6 +17,8 @@ logger = logging.getLogger("gymfc")
 from gymfc.msgs import State_pb2 
 from gymfc.msgs import Action_pb2 
 from abc import ABC, abstractmethod
+from google.protobuf import descriptor
+
 
 class ActionPacket:
     def __init__(self, motor, world_control=Action_pb2.Action.STEP):
@@ -55,7 +54,7 @@ class ActionProtocol:
 
     def __init__(self):
         """ Initialize the electronic speed controller client """
-        self.state_pkt = None
+        self.state_message = None
         self.packet_received = False
         self.exception = None
 
@@ -78,7 +77,7 @@ class ActionProtocol:
                 return (None, self.exception)
             await asyncio.sleep(0.001)
 
-        return (self.state_pkt, None)
+        return (self.state_message, None)
 
     def error_received(self, exc):
         self.exception = exc
@@ -93,7 +92,7 @@ class ActionProtocol:
         # Everything is OK, reset
         self.exception = None
         self.packet_received = True
-        self.state_pkt = StatePacket().decode(data)
+        self.state_message = StatePacket().decode(data)
     
     def connection_lost(self, exc):
         print("Socket closed, stop the event loop")
@@ -124,6 +123,8 @@ class FlightControlEnv(ABC):
     with a 1 second timeout. """
     MAX_CONNECT_TRIES = 60
 
+    VALID_SENSORS = ["esc", "imu", "battery"]
+
     def __init__(self, aircraft_config, config_filepath=None):
         """ Initialize the simulator
 
@@ -131,9 +132,9 @@ class FlightControlEnv(ABC):
             aircraft_config File path of the aircraft Gazebo SDF file
             config_filepath: If provided will override default config
         """
-        # Init the seed variable, user can override this
-        self.seed()
 
+        self.aircraft_sdf_filepath = aircraft_config
+        self.enabled_sensor_measurements = []
         try:
             self.load_config(aircraft_config, config_filepath = config_filepath)
         except ConfigLoadException as e:
@@ -146,18 +147,6 @@ class FlightControlEnv(ABC):
         self.stepsize = self.sdf_max_step_size()        
         self.sim_time = 0
         self.last_sim_time = -self.stepsize
-
-        #TODO Move to the constructor of who inherits it?
-        # Set up the action/obs spaces
-
-        """
-        action_low = np.array([self.output_range[0]] * self.motor_count)
-        action_high = np.array([self.output_range[1]] * self.motor_count)
-        self.action_space = spaces.Box(action_low, action_high, dtype=np.float32)
-
-        state = self.state()
-        self.observation_space = spaces.Box(-np.inf, np.inf, shape=state.shape, dtype=np.float32) 
-        """
 
         # Set up some stats to report at the end, connection are over UDP
         # so it can be useful to see if anything is dropped
@@ -213,23 +202,17 @@ class FlightControlEnv(ABC):
             self.host = cfg["gazebo"]["network"]["hostname"]
 
             self.gz_port = self._get_open_port(
-                self.np_random.randint(
+                np.random.randint(
                     *cfg["gazebo"]["network"]["gzserver"]["port_range"])
             )
             self.aircraft_port = self._get_open_port(
-                self.np_random.randint(
+                np.random.randint(
                     *cfg["gazebo"]["network"]["fc"]["port_range"])
             )
 
 
-            # Digital twin
-            if not os.path.isfile(aircraft_config):
-                message = "Aircraft SDF file  at location '{}' does not exist.".format(digitaltwin_config_path)
-                raise ConfigLoadException(message)
 
-        # Load the digital twin config
-        with open(aircraft_config, "r") as f:
-            self.digitaltwin_cfg = json.load(f)
+        self._parse_model_sdf()
 
     def step_sim(self, ac):
         """ Take a single step in the simulator and return the current 
@@ -253,15 +236,21 @@ class FlightControlEnv(ABC):
         Returns: 
             Numpy array order maintained from aircraft configuration file."""
         ob = [] 
-        # Now rest of the sensors
-        for sensor in self.digitaltwin_cfg["sensors"]["measurements"]:
-            if hasattr(self.sensor_values, sensor["name"]):
-                val = list(getattr(self.sensor_values, sensor["name"]))
-                ob += val
-            else:
-                raise Exception("Could not find sensor ", sensor["name"], " in State packet.")
 
-        return np.array(ob)
+        #XXX Proto3 doesnt have HasField so we iterate on the enabled
+        #sensor measurements from the SDF and maintain order so the agent
+        #can index the flatten array
+        for key in self.enabled_sensor_measurements:
+            field = self.state_message.DESCRIPTOR.fields_by_name[key]
+            value = getattr(self.state_message, key)
+            if field.label == descriptor.FieldDescriptor.LABEL_REPEATED:
+                ob += list(value)
+            else:
+                ob += [value]
+            print ("Key=", key, " Value=", value)
+
+            
+        return np.array(ob).flatten()
 
     async def _step_sim(self, ac, world_control=Action_pb2.Action.STEP):
         """Complete a single simulation step, return a tuple containing
@@ -284,8 +273,9 @@ class FlightControlEnv(ABC):
         # try again or for some reason something goes wrong in the simualator and 
         # the packet wasnt processsed correctly. 
         for i in range(self.MAX_CONNECT_TRIES):
-            self.sensor_values, e = await self.ac_protocol.write(ac, world_control=world_control)
-            if self.sensor_values:
+            self.state_message, e = await self.ac_protocol.write(ac, world_control=world_control)
+            print ("Msg=", self.state_message)
+            if self.state_message:
                 break
             if i == self.MAX_CONNECT_TRIES -1:
                 print ("Timeout connecting to Gazebo")
@@ -294,8 +284,8 @@ class FlightControlEnv(ABC):
             await asyncio.sleep(1)
 
         # Handle some special cases
-        self.sim_time = np.around(self.sensor_values.sim_time , 3)
-        #self.rate_actual = np.array(list(self.sensor_values.imu_angular_velocity_rpy))
+        self.sim_time = np.around(self.state_message.sim_time , 3)
+        #self.rate_actual = np.array(list(self.state_message.imu_angular_velocity_rpy))
         #print ("Actual rate=", self.rate_actual)
         # Update the error
         #self.rate_error = self.desired_state() - self.rate_actual
@@ -308,8 +298,8 @@ class FlightControlEnv(ABC):
 
         self.last_sim_time = self.sim_time 
         self.sim_stats["steps"] += 1
-
-        return self._flatten_ob()
+        print ("Ob=", self._flatten_ob())
+        return np.zeros(4)#
     
     def _signal_handler(self, signal, frame):
         print("Ctrl+C detected, shutting down gazebo and application")
@@ -358,26 +348,67 @@ class FlightControlEnv(ABC):
 
         os.environ.update(env)
 
+    def _parse_model_sdf(self):
+
+        # Digital twin
+        if not os.path.isfile(self.aircraft_sdf_filepath):
+            message = "Aircraft SDF file  at location '{}' does not exist.".format(digitaltwin_config_path)
+            raise ConfigLoadException(message)
+
+        tree = ET.parse(self.aircraft_sdf_filepath)
+        root = tree.getroot()
+        print ("Finding plugins:")
+        els = root.findall(".//plugin[@filename='libAircraftConfigPlugin.so']")
+        if len(els) != 1:
+            raise SystemExit("Could not find plugin with filename {} from SDF file {} required to load the aircraft model.".format("libAircraftConfigPlugin.so", model_sdf))
+        plugin_el = els[0]
+
+        self.motor_count = int(plugin_el.find("motorCount").text)
+        print ("motor count=", self.motor_count)
+        self._get_supported_sensors(plugin_el)
+
+
+    def _get_supported_sensors(self, plugin_el):
+        sdf_to_protobuf = {
+            "imu": {
+                "enable_angular_velocity": "imu_angular_velocity_rpy",
+                "enable_linear_acceleration": "imu_linear_acceleration_xyz",
+                "enable_orientation":"imu_orientation_quat",
+            },
+            "esc": {
+                "enable_angular_velocity": "esc_motor_angular_velocity",
+                "enable_temperature": "esc_temperature",
+                "enable_current": "esc_current",
+                "enable_voltage": "esc_voltage"
+            },
+            "battery": {
+                "enable_voltage":  "vbat_voltage",
+                "enable_current": "vbat_current"
+            }
+        }
+        sensors = plugin_el.find("sensors")
+        for sensor in sensors.findall("sensor"):
+            sensor_type = sensor.attrib["type"]
+            if sensor_type in sdf_to_protobuf:
+                for enabled in sensor:
+                    if enabled.text.lower() == "true":
+                        self.enabled_sensor_measurements.append(sdf_to_protobuf[sensor_type][enabled.tag])
+            else:
+                raise SystemExit("Unsupported sensor {} found in SDF file".format(sensor_type))
+
     def _start_sim(self):
         """ Start Gazebo by first updating all the necessary environment
         variables and then starting the Gazebo server"""
 
-        signal.signal(signal.SIGINT, self._signal_handler)
 
-        # Pass the number of motors to the plugin 
-        # TODO If we find there are to many parameters to 
-        # pass to the plugin switch to JSON
-        os.environ["GYMFC_NUM_MOTORS"] = str(self.digitaltwin_cfg["motor_count"])
+        signal.signal(signal.SIGINT, self._signal_handler)
 
         # Port the aircraft reads in through this environment variable,
         # this is the network channel set up to pass sensor and ESC
         # data back and forth
         os.environ["GYMFC_SITL_PORT"] = str(self.aircraft_port)
 
-        os.environ["GYMFC_DIGITAL_TWIN_SDF"] = self.digitaltwin_cfg["model"]
-
-        # The flight controller needs to know which events to listen for
-        os.environ["GYMFC_SUPPORTED_SENSORS"] = ",".join(self.digitaltwin_cfg["sensors"]["supported"])
+        os.environ["GYMFC_DIGITAL_TWIN_SDF"] = self.aircraft_sdf_filepath
 
         # Source the gazebo setup file to set up vars needed by the simuluator
         self.update_env_variables(self.setup_file)
@@ -392,12 +423,19 @@ class FlightControlEnv(ABC):
         plugin_path = os.path.join(gz_assets_path, "plugins", "build")
         world_path = os.path.join(gz_assets_path, "worlds")
 
-        # Add the new paths
+        # From the gazebo model directory structure the model directory is levels up
+        aircraft_model_dir = os.path.abspath(os.path.join(self.aircraft_sdf_filepath, "../../")) 
+
+        aircraft_plugin_dir = os.path.abspath(os.path.join(self.aircraft_sdf_filepath, "../plugins/build")) 
+
+
+        # Add the new paths required for Gazebo to load our custom
+        # models, plugins and worlds
         os.environ["GAZEBO_MODEL_PATH"] += (os.pathsep + model_path + os.pathsep
-        + self.digitaltwin_cfg["model_dir"])
+        + aircraft_model_dir)
         os.environ["GAZEBO_RESOURCE_PATH"] += os.pathsep + world_path
         os.environ["GAZEBO_PLUGIN_PATH"] += (os.pathsep + plugin_path + os.pathsep +
-self.digitaltwin_cfg["plugin_dir"])
+aircraft_plugin_dir)
 
 
         print ("Model Path=", os.environ["GAZEBO_MODEL_PATH"])
@@ -457,6 +495,7 @@ self.digitaltwin_cfg["plugin_dir"])
         self.sim_stats["time_lapse_hours"] = (time.time() - self.sim_stats["time_start_seconds"])/(60*60)
         self.print_post_simulation_stats()
         self.kill_sim()
+        raise SystemExit("Aborting...")
 
     def reset(self):
         """ Reset the environment (compatible with OpenAI API).
@@ -466,7 +505,7 @@ self.digitaltwin_cfg["plugin_dir"])
         class. """
         self.last_sim_time = -self.stepsize
         # Motor values are ignored during a reset so just send whatever
-        ob = self.loop.run_until_complete(self._step_sim(np.zeros(self.digitaltwin_cfg["motor_count"]), world_control=Action_pb2.Action.RESET))
+        ob = self.loop.run_until_complete(self._step_sim(np.zeros(self.motor_count), world_control=Action_pb2.Action.RESET))
         assert np.isclose(self.sim_time, 0.0, 1e-6), "sim time after reset is incorrect, {} ".format(self.sim_time)
         self.on_reset()
         self.on_observation(ob)
@@ -474,10 +513,6 @@ self.digitaltwin_cfg["plugin_dir"])
 
     def close(self):
         self.shutdown()
-
-    def seed(self, seed=None):
-        self.np_random, seed = seeding.np_random(seed)
-        return [seed]
 
     def render(self, mode='human'):
         """ Launch the Gazebo client """
