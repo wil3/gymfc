@@ -247,8 +247,6 @@ class FlightControlEnv(ABC):
                 ob += list(value)
             else:
                 ob += [value]
-            print ("Key=", key, " Value=", value)
-
             
         return np.array(ob).flatten()
 
@@ -274,7 +272,6 @@ class FlightControlEnv(ABC):
         # the packet wasnt processsed correctly. 
         for i in range(self.MAX_CONNECT_TRIES):
             self.state_message, e = await self.ac_protocol.write(ac, world_control=world_control)
-            print ("Msg=", self.state_message)
             if self.state_message:
                 break
             if i == self.MAX_CONNECT_TRIES -1:
@@ -298,7 +295,6 @@ class FlightControlEnv(ABC):
 
         self.last_sim_time = self.sim_time 
         self.sim_stats["steps"] += 1
-        print ("Ob=", self._flatten_ob())
         return np.zeros(4)#
     
     def _signal_handler(self, signal, frame):
