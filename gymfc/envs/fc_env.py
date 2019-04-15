@@ -198,6 +198,9 @@ class FlightControlEnv(ABC):
 
         # Gazebo configuration
         self.setup_file = default["SetupFile"]
+        if not os.path.isfile(self.setup_file):
+                message = "Could not find Gazebo setup.sh file at '{}'. Typo?".format(self.setup_file)
+                raise ConfigLoadException(message)
         self.world = default["World"]
         self.host = default["Hostname"]
 
