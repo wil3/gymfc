@@ -1,8 +1,9 @@
 import argparse
 import os
-from gymfc.envs.fc_env import FlightControlEnv 
+from gymfc.envs.fc_env import FlightControlEnv
 import numpy as np
 import time
+
 
 def step_sim(env, ac, delay=0):
     """ Evaluate an environment with the given policy """
@@ -14,6 +15,7 @@ def step_sim(env, ac, delay=0):
         if s == 'q' or env.is_done():
             break
     env.close()
+
 
 class Sim(FlightControlEnv):
 
@@ -36,8 +38,8 @@ class Sim(FlightControlEnv):
     def on_reset(self):
         pass
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     parser = argparse.ArgumentParser("Step the simulator with the given motor values.")
     parser.add_argument('aircraftconfig', help="File path of the aircraft SDF.")
     parser.add_argument('value', nargs='+', type=float, help="List of control signals, one for each motor.")
@@ -46,11 +48,9 @@ if __name__ == "__main__":
     parser.add_argument('--max-sim-time', default=1, type=float, help="Time in seconds the sim should run for.")
     parser.add_argument('--verbose', action="store_true")
 
-
     args = parser.parse_args()
 
     env = Sim(args.aircraftconfig, config_filepath=args.gymfc_config, max_sim_time=args.max_sim_time, verbose=args.verbose)
+              verbose=args.debug)
     env.render()
     step_sim(env, np.array(args.value), delay=args.delay)
-
-

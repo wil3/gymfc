@@ -10,4 +10,6 @@ CMakeCache.txt
 **/CMakeFiles/*
 .vimrc
 gymfc.json
+.idea
+venv
 env/
