@@ -332,6 +332,7 @@ void FlightControllerPlugin::ProcessSDF(sdf::ElementPtr _sdf)
 
 void FlightControllerPlugin::SoftReset()
 {
+  //this->world->Reset();
   this->world->ResetTime();
   this->world->ResetEntities(gazebo::physics::Base::BASE);
 	this->world->ResetPhysicsStates();
@@ -430,12 +431,12 @@ void FlightControllerPlugin::ParseDigitalTwinSDF()
 }
 void FlightControllerPlugin::LoadDigitalTwin()
 {
-  gzdbg << "Inserting digital twin from, " << this->digitalTwinSDF << ".\n";
+  gzdbg << "Inserting digital twin from SDF, " << this->digitalTwinSDF << ".\n";
 
-  // TODO Better way to do this?
+  // XXX Better way to do this?
   // It appears the inserted model is not available in the world
-  // right away, maybe due to message passing?
-  // Poll until its there
+  // right away, maybe due to the message passing that occurs?
+  // For now poll until its there in the world
   unsigned int startModelCount = this->world->ModelCount();
   this->world->InsertModelSDF(*this->sdfElement);
   while (1)
@@ -462,91 +463,64 @@ void FlightControllerPlugin::LoadDigitalTwin()
 
   physics::ModelPtr supportModel = this->world->ModelByName(kTrainingRigModelName);
   if (!supportModel){
-    gzerr << "Could not find training rig"<<std::endl;
+    gzerr << "Could not find training rig model." << std::endl;
     return;
   }
   
   gazebo::physics::LinkPtr centerOfThrustReferenceLink;
   centerOfThrustReferenceLink = FindLinkByName(model, this->centerOfThrustReferenceLinkName);
   if (!centerOfThrustReferenceLink){
-    gzerr << "Could not find frame link"<<std::endl;
+    gzerr << "Could not find the CoT link" << std::endl;
     return;
   }
+
+  // Create the ball joint to attach the aircraft too
   gazebo::physics::JointPtr joint;
   joint = this->world->Physics()->CreateJoint("ball", supportModel);
   joint->SetName("ball_joint");
-  //joint->SetMode(supportModel);
-
   joint->Attach(supportModel->GetLink("pivot"), centerOfThrustReferenceLink);
 
-  // This isnt used by DART
-  //joint->Load(supportModel->GetLink("pivot"), centerOfThrustReferenceLink, 
-  //    ignition::math::Pose3d(this->cot.X(), this->cot.Y(), this->cot.Z(), 0, 0, 0));
 
+  if (this->world->Physics()->GetType().compare("dart") == 0)
+  {
+    // Discussed here https://www.reddit.com/r/robotics/comments/5a7xrl/bullet_vs_ode_to_simulate_robotic_arm/
 
-  /////////////////////////////////////////////////////
-  // Discussed here https://www.reddit.com/r/robotics/comments/5a7xrl/bullet_vs_ode_to_simulate_robotic_arm/
-  // GETTING DART TO WORK
-  gazebo::physics::DARTModelPtr dartModelPtr;
-  std::shared_ptr<dart::dynamics::Joint::Properties> jointProperties;
-  dart::dynamics::BodyNode* _parent;
-  dart::dynamics::SkeletonPtr _skeleton;
-  dart::dynamics::SkeletonPtr _aircraftSkeleton;
-
-  dartModelPtr =   boost::dynamic_pointer_cast<gazebo::physics::DARTModel>(supportModel);
-  _skeleton = dartModelPtr->DARTSkeleton();
-
-  _aircraftSkeleton = boost::dynamic_pointer_cast<gazebo::physics::DARTModel>(model)->DARTSkeleton();
-
-
-
-      _parent  = _skeleton->getBodyNode("pivot");
-
-    gzdbg << " Joint parent " << joint->GetParent()->GetName() << std::endl;
-    gazebo::physics::DARTJointPtr dartJoint = nullptr;
-    dartJoint = boost::dynamic_pointer_cast<gazebo::physics::DARTJoint>(joint);
-    GZ_ASSERT(dartJoint, "DART joint is null");
-
+    // Do all the casting
+    dart::dynamics::SkeletonPtr aircraftSkeleton = boost::dynamic_pointer_cast<gazebo::physics::DARTModel>(model)->DARTSkeleton();
+    gazebo::physics::DARTModelPtr dartSupportModelPtr =   boost::dynamic_pointer_cast<gazebo::physics::DARTModel>(supportModel);
+    gazebo::physics::DARTJointPtr dartJoint = boost::dynamic_pointer_cast<gazebo::physics::DARTJoint>(joint);
     gazebo::physics::DARTLinkPtr dartLink = boost::dynamic_pointer_cast<gazebo::physics::DARTLink>(centerOfThrustReferenceLink);
 
-    //jointType = GetDARTJointType(dartJoint);
-    jointProperties = dartJoint->DARTProperties();
-
+    //Do all this just to get the dark joint
+    std::shared_ptr<dart::dynamics::Joint::Properties> jointProperties = dartJoint->DARTProperties();
     std::pair<dart::dynamics::Joint*, dart::dynamics::BodyNode*> pair;
-
-gzdbg << "HERE 1\n";
     dart::dynamics::BodyNode::AspectProperties properties("testbody");
-
-      pair =  _aircraftSkeleton->createJointAndBodyNodePair<
-          dart::dynamics::BallJoint,dart::dynamics::BodyNode >(_parent,
-          static_cast<const dart::dynamics::BallJoint::Properties&>(
-          *jointProperties),
-
-            properties
-          );
-          //static_cast<const dart::dynamics::BodyNode::Properties&>(
-           // *(dartLink->DARTProperties())
-            ///)
-
+    pair =  aircraftSkeleton->createJointAndBodyNodePair<dart::dynamics::BallJoint, dart::dynamics::BodyNode>(
+        dartSupportModelPtr->DARTSkeleton()->getBodyNode("pivot"),
+        static_cast<const dart::dynamics::BallJoint::Properties&>(*jointProperties),
+        properties
+    );
     dart::dynamics::Joint* newJoint = pair.first;
+    // XXX Cant initialize until SetDARTJoint called
     dartJoint->SetDARTJoint(newJoint);
 
-gzdbg << "HERE 2\n";
-    // Cant initialize until SetDARTJoint called
-
-
+    // This is required to constrain the distance of the child link
+    // For some reason the Load implementation is is missing this 
     Eigen::Vector3d location = Eigen::Vector3d(this->cot.X(), this->cot.Y(), this->cot.Z());
     dart::constraint::BallJointConstraintPtr mBallConstraint;
     gzdbg << "Setting link to center " << centerOfThrustReferenceLink->GetName() << std::endl;
-    mBallConstraint =
-    std::make_shared<dart::constraint::BallJointConstraint>(_aircraftSkeleton->getBodyNode(
+    mBallConstraint = std::make_shared<dart::constraint::BallJointConstraint>(aircraftSkeleton->getBodyNode(
       centerOfThrustReferenceLink->GetName()), location);
     dartLink->DARTWorld()->getConstraintSolver()->addConstraint(mBallConstraint);
+  } 
+  else 
+  {
+    joint->Load(supportModel->GetLink("pivot"), centerOfThrustReferenceLink, 
+      ignition::math::Pose3d(this->cot.X(), this->cot.Y(), this->cot.Z(), 0, 0, 0));
+
+  }
 
   joint->Init();
-
-  //joint = supportModel->CreateJoint("ball_joint", "ball",supportModel->GetLink("pivot"), centerOfThrustReferenceLink);
-
   
   // This is actually great because we've removed the ground plane so there is no possible collision
   gzdbg << "Aircraft model fixed to world\n";
@@ -558,6 +532,17 @@ void FlightControllerPlugin::FlushSensors()
   // XXX The first episode the sensor values are set to some active value
   // to force plugins to send action state.
   this->SoftReset();
+
+  /* 
+  cmd_msgs::msgs::MotorCommand cmd;
+  for (unsigned int i = 0; i < this->numActuators; i++)
+  {
+    cmd.add_motor(0);
+  }
+  this->cmdPub->Publish(cmd);
+  this->world->Step(1);
+  */
+
 
   //TODO this must be based on the units or come up with somehting generic
   double error = 0.017;// About 1 deg/s
@@ -585,6 +570,8 @@ void FlightControllerPlugin::FlushSensors()
         break;
       }
   }
+
+  this->SoftReset();
 
 }
 void FlightControllerPlugin::LoopThread()
