@@ -125,7 +125,7 @@ class FlightControlEnv(ABC):
 
     VALID_SENSORS = ["esc", "imu", "battery"]
 
-    def __init__(self, aircraft_config, config_filepath=None):
+    def __init__(self, aircraft_config, config_filepath=None, loop=None):
         """ Initialize the simulator
 
         Args: 
@@ -142,7 +142,10 @@ class FlightControlEnv(ABC):
 
         # Track process IDs so we can kill em
         self.process_ids = []
-        self.loop = asyncio.get_event_loop()
+        if not loop:
+            self.loop = asyncio.get_event_loop()
+        else:
+            self.loop = loop
 
         self.stepsize = self.sdf_max_step_size()        
         self.sim_time = 0
@@ -204,16 +207,22 @@ class FlightControlEnv(ABC):
         self.world = default["World"]
         self.host = default["Hostname"]
 
-        self.gz_port = self._get_open_port(
-            np.random.randint(
-                default.getint("GazeboNetworkPortRangeBegin"),
-                default.getint("GazeboNetworkPortRangeEnd"))
-        )
-        self.aircraft_port = self._get_open_port(
-            np.random.randint(
-                default.getint("FCPluginPortRangeBegin"),
-                default.getint("FCPluginPortRangeEnd"))
-        )
+        if cfg.has_option("DEFAULT", "GazeboNetworkPortRangeEnd"):
+            self.gz_port = self._get_open_port(
+                np.random.randint(
+                    default.getint("GazeboNetworkPortRangeBegin"),
+                    default.getint("GazeboNetworkPortRangeEnd"))
+            )
+        else:
+            self.gz_port = default.getint("GazeboNetworkPortRangeBegin")
+        if cfg.has_option("DEFAULT", "FCPluginPortRangeEnd"):
+            self.aircraft_port = self._get_open_port(
+                np.random.randint(
+                    default.getint("FCPluginPortRangeBegin"),
+                    default.getint("FCPluginPortRangeEnd"))
+            )
+        else:
+            self.aircraft_port = default.getint("FCPluginPortRangeBegin")
 
 
 
@@ -250,8 +259,10 @@ class FlightControlEnv(ABC):
             value = getattr(self.state_message, key)
             if field.label == descriptor.FieldDescriptor.LABEL_REPEATED:
                 ob += list(value)
+                setattr(self, key, np.array(list(value)))
             else:
                 ob += [value]
+                setattr(self, key, value)
             
         return np.array(ob).flatten()
 
@@ -300,7 +311,8 @@ class FlightControlEnv(ABC):
 
         self.last_sim_time = self.sim_time 
         self.sim_stats["steps"] += 1
-        return np.zeros(4)#
+
+        return self._flatten_ob()
     
     def _signal_handler(self, signal, frame):
         print("Ctrl+C detected, shutting down gazebo and application")
@@ -358,14 +370,12 @@ class FlightControlEnv(ABC):
 
         tree = ET.parse(self.aircraft_sdf_filepath)
         root = tree.getroot()
-        print ("Finding plugins:")
         els = root.findall(".//plugin[@filename='libAircraftConfigPlugin.so']")
         if len(els) != 1:
             raise SystemExit("Could not find plugin with filename {} from SDF file {} required to load the aircraft model.".format("libAircraftConfigPlugin.so", model_sdf))
         plugin_el = els[0]
 
         self.motor_count = int(plugin_el.find("motorCount").text)
-        print ("motor count=", self.motor_count)
         self._get_supported_sensors(plugin_el)
 
 
@@ -402,7 +412,8 @@ class FlightControlEnv(ABC):
         variables and then starting the Gazebo server"""
 
 
-        signal.signal(signal.SIGINT, self._signal_handler)
+        # XXX
+        #signal.signal(signal.SIGINT, self._signal_handler)
 
         # Port the aircraft reads in through this environment variable,
         # this is the network channel set up to pass sensor and ESC
