@@ -125,7 +125,7 @@ class FlightControlEnv(ABC):
 
     VALID_SENSORS = ["esc", "imu", "battery"]
 
-    def __init__(self, aircraft_config, config_filepath=None, loop=None):
+    def __init__(self, aircraft_config, config_filepath=None, loop=None, verbose=False):
         """ Initialize the simulator
 
         Args: 
@@ -133,6 +133,7 @@ class FlightControlEnv(ABC):
             config_filepath: If provided will override default config
         """
 
+        self.verbose = verbose
         self.aircraft_sdf_filepath = aircraft_config
         self.enabled_sensor_measurements = []
         try:
@@ -454,7 +455,11 @@ aircraft_plugin_dir)
         print ("Plugin Path=",os.environ["GAZEBO_PLUGIN_PATH"] )
 
         target_world = os.path.join(gz_assets_path, "worlds", self.world)
-        p = subprocess.Popen(["gzserver", "--verbose", target_world], shell=False) 
+        p = None
+        if self.verbose:
+            p = subprocess.Popen(["gzserver", "--verbose", target_world], shell=False) 
+        else:
+            p = subprocess.Popen(["gzserver", target_world], shell=False) 
         print ("Starting gzserver with process ID=", p.pid)
         self.process_ids.append(p.pid)
 
