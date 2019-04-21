@@ -41,7 +41,6 @@
 
 namespace gazebo
 {
-  //static const std::string kDefaultCmdPubTopic = "/gazebo/command/motor_speed";
   static const std::string kDefaultCmdPubTopic = "/aircraft/command/motor";
   static const std::string kDefaultImuSubTopic = "/aircraft/sensor/imu";
   static const std::string kDefaultEscSubTopic = "/aircraft/sensor/esc";
