@@ -5,40 +5,43 @@ import numpy as np
 import time
 
 def step_sim(env, delay=0, scale=1):
-    """ Evaluate an environment with the given policy """
     motor_commands = [
-        np.array([1, 1, 0, 0]), # roll right
-        np.array([0, 0, 1, 1]), # roll left 
+        np.array([1, 1, 0, 0]), # roll left
+        np.array([0, 0, 1, 1]), # roll right
         np.array([1, 0, 1, 0]), # pitch forward 
-        np.array([1, 0, 1, 0]), # pitch backwards 
+        np.array([0, 1, 0, 1]), # pitch backwards 
         np.array([1, 0, 0, 1]), # Yaw CCW 
         np.array([0, 1, 1, 0])  # Yaw CW
     ]
-    motor_command_strings = ["Roll right", 
-                             "Roll left",
-                             "Pitch forward", 
-                             "Pitch backware", 
+    motor_command_strings = ["Roll Left", 
+                             "Roll Right",
+                             "Pitch Forward", 
+                             "Pitch Backwards", 
                              "Yaw CCW",
                              "Yaw CW"]
-    for m in motor_commands:
+    running = True
+    while len(motor_commands) > 0 and running:
+
+        m = motor_commands.pop(0)
         s = motor_command_strings.pop(0)
         print (s)
         print ("-----------------------------------")
         ob = env.reset()
-        time.sleep(2)
         while True:
             ob = env.step_sim(m * scale)
-            print ("Angular=", env.imu_angular_velocity_rpy)
-            if delay > 0:
-                time.sleep(delay)
-            if env.is_done():
+            print ("Angular Velocity=", env.imu_angular_velocity_rpy)
+            s = input("[enter] = Step, n = Next Command, q = Quit")
+            if s == 'n' or env.is_done():
+                break
+            elif s == 'q':
+                running = False
                 break
     env.close()
 
 class Sim(FlightControlEnv):
 
     def __init__(self, aircraft_config, config_filepath=None, max_sim_time=1):
-        super().__init__(aircraft_config, config_filepath=config_filepath)
+        super().__init__(aircraft_config, config_filepath=config_filepath, verbose=False)
         self.max_sim_time = max_sim_time
 
     def state(self):
