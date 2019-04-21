@@ -33,7 +33,7 @@ Please use the following BibTex entry to cite our work,
   signals and subscribing to sensor data. 
 * Flexible agent interface allowing controller development for any type of flight control systems.
 * Compatible with OpenAI environments.
-* Support for Gazebo 8 and 9. Gazebo plugins are built dynamically depending on
+* Support for Gazebo 8, 9, and 11. Gazebo plugins are built dynamically depending on
   your installed version. 
 * Configurable through JSON
 
@@ -65,29 +65,8 @@ env/bin/activate` and to deactivate, `deactivate`.
 2. From root directory of this project, `pip3 install .`
 3. Confirm `SetupFile` in `gymfc.ini` is pointing to the correct location.
 
-# Verifying Installation 
-
 
 # Development 
-
-Developing a controller in simulation consists of four components. 1) The agent,
-2) the trainer, 3) the environment and 4) the aircraft model (digital twin).
-
-GymFC's primary goal is to train controllers capable of flight in the real-world. 
- In order to construct optimal flight controllers, the aircraft used in
-simulation should closely match the real-world aircraft. Therefore the GymFC environment is decoupled from the simulated aircraft.
-As previously mentioned, GymFC comes with an example to verify the environment.
-The Iris model can be useful for testing out new controllers. However when
-transferring the controller to run on a different aircraft, a new model will be
-required. Once the model is developed set the model directory to `AircraftModel` in your configuration file.
-
-It is recommended to run GymFC in headless mode (i.e. using `gzserver`) however
-during development and testing it may be desired to visually see the aircraft.  You can do this by using the `render` OpenAI gym API call which will also start `gzclient` along side `gzserver`. For example when creating the environment use,
-```
-env = gym.make(env_id)
-env.render()
-```
-[![GymFC Visualization Demo](https://raw.githubusercontent.com/wil3/gymfc/master/images/gymfc-vis.png)](https://youtu.be/sX9NwmDg6SA)
 
 If you plan to work with the GymFC source code you will want to install it in
 development mode, `pip3 install -e .` from the root directory. You will also
@@ -95,8 +74,67 @@ need to build the plugin manually by running the script
 `gymfc/envs/assets/gazebo/plugins/build_plugin.sh`. 
 
 
-## Digital twin interface
+## Digital Twin 
+GymFC takes as input an aircraft model.sdf defining all the details for the
+aircaft. The SDF delares plugins implementing GymFC's aircraft API to
+communicate to and from the aircraft.
 
-Center of thrust
+### SDF
+
+Each model.sdf **must** declare the `libAircraftConfigPlugin.so` plugin. 
+This is a dummy plugin allowing us to set arbitrary configuration data.
+An example configuration may look like this,
+
+```xml
+<plugin name="config" filename="libAircraftConfigPlugin.so">
+    <!-- Define the total number of motors that shall be controlled -->
+    <motorCount>4</motorCount>
+
+    <!-- The center of thrust must be defined in order to attach the aircraft
+model to the simulation. The offset will in relation to this specified link -->
+    <centerOfThrust> 
+        <link>battery</link>
+        <offset>0 0 0.058</offset>
+    </centerOfThrust>
+    <!-- Specify all the sensors this aircraft supports. Valid sensor types 
+are "imu, esc, and battery">
+    <sensors>
+      <sensor type="imu">
+          <enable_angular_velocity>true</enable_angular_velocity>
+          <enable_linear_acceleration>true</enable_linear_acceleration>
+          <enable_orientation>true</enable_orientation>
+      </sensor>
+      <!--
+      <sensor type="esc">
+            <enable_angular_velocity>true</enable_angular_velocity>
+            <enable_temperature>true</enable_temperature>
+            <enable_current>true</enable_current>
+      </sensor>
+      <sensor type="battery">
+          <enable_voltage>true</enable_voltage>
+          <enable_current>true</enable_current>
+      </sensor>
+        -->
+    </sensors>
+</plugin>
+```
+
+### API
+GymFC communicates with the aircraft through Google Protobuf messages. At a
+minimum the aircraft must subscribe to motor commands and publish IMU messages
+
+#### GymFC -> Aircraft
+
+*Topic* /aircraft/command/motor 
+*Message Type* [MotorCommand.proto]()
+
+#### Aircraft -> GymFC
+
+*Topic* /aircraft/sensor/imu 
+*Message Type* Imu.proto
+
+*Topic* /aircraft/sensor/esc 
+*Message Type* EscSensor.proto
+
 ## Agent Interface
 
