@@ -75,9 +75,26 @@ need to build the plugin manually by running the script
 
 
 ## Digital Twin 
-GymFC takes as input an aircraft model.sdf defining all the details for the
-aircaft. The SDF delares plugins implementing GymFC's aircraft API to
-communicate to and from the aircraft.
+For simplicity the GymFC environment takes as input the aircraft `model.sdf` which contains all properties for the
+aircaft in a single location. The SDF delares all the visualizations, geometries and plugins for the aircraft.
+
+### Directory Layout
+GymFC expects your model to have the following Gazebo style directory structure: 
+```
+model_name/
+  model.config
+  model.sdf
+  plugins/
+    build/
+```
+where the `plugin` directory contains the  source for your plugins and the
+`build` directory will contain the built binary plugins. GymFC will, at
+runtime, add the build directory to the Gazebo plugin path.
+
+If you are using external plugins (e.g.,[gymfc-aircraft-plugins](https://github.com/wil3/gymfc-aircraft-plugins) ) create soft links
+to each .so file in the build directory.
+
+
 
 ### SDF
 
@@ -97,7 +114,7 @@ model to the simulation. The offset will in relation to this specified link -->
         <offset>0 0 0.058</offset>
     </centerOfThrust>
     <!-- Specify all the sensors this aircraft supports. Valid sensor types 
-are "imu, esc, and battery">
+are "imu, esc, and battery" -->
     <sensors>
       <sensor type="imu">
           <enable_angular_velocity>true</enable_angular_velocity>
@@ -123,17 +140,20 @@ are "imu, esc, and battery">
 GymFC communicates with the aircraft through Google Protobuf messages. At a
 minimum the aircraft must subscribe to motor commands and publish IMU messages
 
-#### GymFC -> Aircraft
+#### GymFC to Aircraft
 
 *Topic* /aircraft/command/motor 
 *Message Type* [MotorCommand.proto]()
 
-#### Aircraft -> GymFC
+#### Aircraft to GymFC
 
 *Topic* /aircraft/sensor/imu 
+
 *Message Type* Imu.proto
 
+
 *Topic* /aircraft/sensor/esc 
+
 *Message Type* EscSensor.proto
 
 ## Agent Interface
