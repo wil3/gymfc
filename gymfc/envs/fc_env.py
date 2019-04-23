@@ -191,7 +191,7 @@ class FlightControlEnv(ABC):
                 config_filepath = env_config_path
         else:
             if not os.path.isfile(default_config_path):
-                message = "Default configuration file missing, aborting"
+                message = "Default configuration file at {} missing, aborting.".format(default_config_path)
                 raise ConfigLoadException(message)
             else:
                 config_filepath = default_config_path
