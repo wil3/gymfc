@@ -47,7 +47,7 @@ class StatePacket:
     def decode(self, data):
         state = State_pb2.State()
         state.ParseFromString(data)
-        #print ("State2=", state)
+        #print ("State=", state)
         return state
 
 class ActionProtocol:
@@ -451,8 +451,8 @@ class FlightControlEnv(ABC):
 aircraft_plugin_dir)
 
 
-        print ("Model Path=", os.environ["GAZEBO_MODEL_PATH"])
-        print ("Plugin Path=",os.environ["GAZEBO_PLUGIN_PATH"] )
+        print ("Gazebo Model Path =", os.environ["GAZEBO_MODEL_PATH"])
+        print ("Gazebo Plugin Path =",os.environ["GAZEBO_PLUGIN_PATH"] )
 
         target_world = os.path.join(gz_assets_path, "worlds", self.world)
         p = None
@@ -524,9 +524,7 @@ aircraft_plugin_dir)
         # Motor values are ignored during a reset so just send whatever
         ob = self.loop.run_until_complete(self._step_sim(np.zeros(self.motor_count), world_control=Action_pb2.Action.RESET))
         assert np.isclose(self.sim_time, 0.0, 1e-6), "sim time after reset is incorrect, {} ".format(self.sim_time)
-        self.on_reset()
-        self.on_observation(ob)
-        return self.state() 
+        return ob
 
     def close(self):
         self.shutdown()
@@ -536,53 +534,11 @@ aircraft_plugin_dir)
         p = subprocess.Popen(["gzclient"], shell=False)
         self.process_ids.append(p.pid)
 
-    @abstractmethod
-    def on_observation(self, ob):
-        """ Callback that an observation is ready """
-        return
-
-    @abstractmethod
-    def on_reset(self):
-        """ Callback that a reset is occuring. Implement this function to 
-        reset specific environment states."""
-        return
-
-    @abstractmethod
-    def is_done(self):
-        """ Return whether simulation is done 
-        
-        Returns:
-            True if done"""
-        return
-
-    @abstractmethod
-    def state(self):
-        """ State returned to the agent may consist more than just
-        the current step observation (i.e. a history of observations).
-        For example it is common to include the error (i.e. angular velocity error)
-        as part of the state.
-        
-        Returns:
-            A numpy array corresponding to the current state.
-        """
-        return
-
-    @abstractmethod
-    def desired_state(self):
-        """ Returns the current desired state. Note will be called multiple times 
-        throughout the task allowing for dynamically changing desired states therefore
-        the designer should pay special attention when it is reset.
-
-        Note: This may be a subset or different representation of the actual state.
-        
-        Returns:
-            A numpy array representing the current desired state."""
-        return
-
 
 
 class SDFNoMaxStepSizeFoundException(Exception):
     pass
+
 class ConfigLoadException(Exception):
     pass
 
