@@ -413,8 +413,8 @@ class FlightControlEnv(ABC):
                 raise SystemExit("Unsupported sensor {} found in SDF file".format(sensor_type))
 
     def _plugins_exist(self, build_path):
-        return (os.path.join(build_path, "libFlightControllerPlugin.so") and 
-            os.path.join(build_path, "libAircraftConfigPlugin.so"))
+        return (os.path.isfile(os.path.join(build_path, "libFlightControllerPlugin.so")) and 
+            os.path.isfile(os.path.join(build_path, "libAircraftConfigPlugin.so")))
 
     def _start_sim(self):
         """ Start Gazebo by first updating all the necessary environment
