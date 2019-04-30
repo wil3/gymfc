@@ -243,7 +243,7 @@ void FlightControllerPlugin::LoadVars()
 
 void FlightControllerPlugin::InitState()
 {
-  // Initialize the state of the senors to a value
+  //XXX Initialize the state of the senors to a value
   // that reflect the aircraft in an active state thus 
   // forcing the sensors to be flushed.
   for (unsigned int i = 0; i < 3; i++)
@@ -273,9 +273,9 @@ void FlightControllerPlugin::InitState()
 void FlightControllerPlugin::EscSensorCallback(EscSensorPtr &_escSensor)
 {
   uint32_t id = _escSensor->id();  
-  //gzdbg << "Received ESC " << id << std::endl;
   boost::mutex::scoped_lock lock(g_CallbackMutex);
 
+  //gzdbg << "\nReceived ESC " << id << " speed=" <<  _escSensor->motor_speed() << std::endl;
   this->state.set_esc_motor_angular_velocity(id, _escSensor->motor_speed());
   this->state.set_esc_temperature(id, _escSensor->temperature());
   this->state.set_esc_current(id, _escSensor->current());
@@ -556,7 +556,7 @@ void FlightControllerPlugin::FlushSensors()
           std::abs(this->state.imu_angular_velocity_rpy(0)) > error || 
           std::abs(this->state.imu_angular_velocity_rpy(1)) > error || 
           std::abs(this->state.imu_angular_velocity_rpy(2)) > error)){
-        //gzdbg << "Gyro r=" << rates.X() << " p=" << rates.Y() << " y=" << rates.Z() << "\n";
+        //gzdbg << "Gyro r=" << this->state.imu_angular_velocity_rpy(0) << " p=" << this->state.imu_angular_velocity_rpy(1) << " y=" << this->state.imu_angular_velocity_rpy(2) << "\n";
         //gzdbg << "Error too great" << std::endl;
         //
         // Trigger all plugins to publish their values
