@@ -57,6 +57,8 @@ class ActionProtocol:
         self.state_message = None
         self.packet_received = False
         self.exception = None
+        self.send_time = None
+        self.timeout = 1
 
     def connection_made(self, transport):
         self.transport = transport
@@ -66,15 +68,18 @@ class ActionProtocol:
         the current sensor values and an exception if anything bad happend.
         
         Args:
-            motor_values (np.array): motor values in range [0, 1000]
+            motor_values (np.array): Range dependent on aircraft motor model 
         """
         self.packet_received = False
+        self.send_time = time.time()
         self.transport.sendto(ActionPacket(motor_values, world_control).encode())
 
         # Pass the exception back if anything bad happens
         while not self.packet_received:
             if self.exception:
                 return (None, self.exception)
+            elif time.time() > self.send_time + self.timeout:
+                return (None, ReadTimeoutException("Timeout reached waiting for response."))
             await asyncio.sleep(0.001)
 
         return (self.state_message, None)
@@ -159,7 +164,7 @@ class FlightControlEnv(ABC):
         self.sim_stats["packets_dropped"] = 0
         self.sim_stats["time_start_seconds"] = time.time()
 
-        print ("Sending to Gazebo port ", self.aircraft_port)
+        print ("Sending motor control signals to port ", self.aircraft_port)
         # Connect to the Aircraft plugin
         writer = self.loop.create_datagram_endpoint(
             lambda: ActionProtocol(),
@@ -272,8 +277,7 @@ class FlightControlEnv(ABC):
         the simulation time and the state
 
         Args:
-            action (np.array): motor values normalized between [-1:1] in 
-        the order [rear_r, front_r, rear_l, font_l]
+            action (np.array): motor values 
 
         Returns:
             Numpy array representing the current observation received from the 
@@ -292,9 +296,9 @@ class FlightControlEnv(ABC):
             if self.state_message:
                 break
             if i == self.MAX_CONNECT_TRIES -1:
-                print ("Timeout connecting to Gazebo")
+                print ("Timeout communicating with flight control plugin.")
                 self.shutdown()
-                raise SystemExit("Timeout, could not connect to Gazebo")
+                raise SystemExit("Timeout communicating with flight control plugin.")
             await asyncio.sleep(1)
 
         # Handle some special cases
@@ -498,7 +502,7 @@ aircraft_plugin_dir)
         """ Kill the gazebo processes based on the original PID  """
         for pid in self.process_ids:
             p = subprocess.run("kill {}".format(pid), shell=True)
-            print("Killing process with ID=", pid)
+            print("Killing Gazebo process with ID=", pid)
 
     def print_post_simulation_stats(self):
         print ("\nSimulation Stats")
@@ -512,7 +516,7 @@ aircraft_plugin_dir)
         self.sim_stats["time_lapse_hours"] = (time.time() - self.sim_stats["time_start_seconds"])/(60*60)
         self.print_post_simulation_stats()
         self.kill_sim()
-        raise SystemExit("Aborting...")
+        raise SystemExit("Shuting down GymFC.")
 
     def reset(self):
         """ Reset the environment (compatible with OpenAI API).
@@ -520,6 +524,8 @@ aircraft_plugin_dir)
         Warning: When inheriting this class you will most likely need to override
         this method and call super to reset any internal state used in the child 
         class. """
+        # XXX Because we use asyncio if a sleep is done right after a command
+        # its possible well miss the recieve message
         self.last_sim_time = -self.stepsize
         # Motor values are ignored during a reset so just send whatever
         ob = self.loop.run_until_complete(self._step_sim(np.zeros(self.motor_count), world_control=Action_pb2.Action.RESET))
@@ -542,3 +548,5 @@ class SDFNoMaxStepSizeFoundException(Exception):
 class ConfigLoadException(Exception):
     pass
 
+class ReadTimeoutException(Exception):
+    pass
