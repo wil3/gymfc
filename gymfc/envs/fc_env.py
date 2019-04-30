@@ -412,6 +412,10 @@ class FlightControlEnv(ABC):
             else:
                 raise SystemExit("Unsupported sensor {} found in SDF file".format(sensor_type))
 
+    def _plugins_exist(self, build_path):
+        return (os.path.join(build_path, "libFlightControllerPlugin.so") and 
+            os.path.join(build_path, "libAircraftConfigPlugin.so"))
+
     def _start_sim(self):
         """ Start Gazebo by first updating all the necessary environment
         variables and then starting the Gazebo server"""
@@ -438,6 +442,14 @@ class FlightControlEnv(ABC):
         gz_assets_path = os.path.join(os.path.dirname(__file__), "assets/gazebo/")
         model_path = os.path.join(gz_assets_path, "models")
         plugin_path = os.path.join(gz_assets_path, "plugins", "build")
+
+        if not self._plugins_exist(plugin_path):
+            readme_path = os.path.join(gz_assets_path, "plugins", "README.md")
+            raise SystemExit("Could not find Gazebo plugins. " +
+                             "If you have installed in development mode these " +
+                             "must be built manually." +
+                             " Please refer to {} for manually building the plugins.".format(readme_path))
+
         world_path = os.path.join(gz_assets_path, "worlds")
 
         # From the gazebo model directory structure the model directory is levels up
@@ -496,7 +508,7 @@ aircraft_plugin_dir)
             if not (port in open_ports):
                 return port
 
-        raise Exception("Could not find open port")
+        raise Exception("Could not find an open port")
 
     def kill_sim(self):
         """ Kill the gazebo processes based on the original PID  """
