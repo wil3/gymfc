@@ -24,6 +24,7 @@ The script will
 output a plot indicating the total distance the model shifted during the
 experiement.  
 
+Note: Requires [py3gazebo](https://github.com/wil3/py3gazebo) and Matplotlib
 Example use,
 ```
 python3 check_sim_stability.py <path to aircraft model SDF> --max-sim-time=1 --gazebo-version=11
