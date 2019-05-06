@@ -6,7 +6,7 @@ from gymfc.envs.fc_env import FlightControlEnv
 
 
 class Sim(FlightControlEnv):
-    def Sim(self, aircraft_config, config=None):
+    def __init__(self, aircraft_config, config=None):
         super(self, Sim).__init__(aircraft_config, config_filepath=config)
 
     def state(self):
