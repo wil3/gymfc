@@ -427,16 +427,19 @@ class FlightControlEnv(ABC):
         # Port the aircraft reads in through this environment variable,
         # this is the network channel set up to pass sensor and ESC
         # data back and forth
-        os.environ["GYMFC_SITL_PORT"] = str(self.aircraft_port)
+        # XXX Could actual be a race condition if 2+ processes are started 
+        # at the same time
+        container_env = os.environ.copy()
 
-        os.environ["GYMFC_DIGITAL_TWIN_SDF"] = self.aircraft_sdf_filepath
+        container_env["GYMFC_SITL_PORT"] = str(self.aircraft_port)
+        container_env["GYMFC_DIGITAL_TWIN_SDF"] = self.aircraft_sdf_filepath
 
         # Source the gazebo setup file to set up vars needed by the simuluator
         self.update_env_variables(self.setup_file)
 
         # This defines which network port gazebo will start on, we modify 
         # this so we can start multiple instances
-        os.environ["GAZEBO_MASTER_URI"] = "http://{}:{}".format(self.host, self.gz_port)
+        container_env["GAZEBO_MASTER_URI"] = "http://{}:{}".format(self.host, self.gz_port)
 
         # Set up paths to our assets
         gz_assets_path = os.path.join(os.path.dirname(__file__), "assets/gazebo/")
@@ -460,22 +463,22 @@ class FlightControlEnv(ABC):
 
         # Add the new paths required for Gazebo to load our custom
         # models, plugins and worlds
-        os.environ["GAZEBO_MODEL_PATH"] += (os.pathsep + model_path + os.pathsep
+        container_env["GAZEBO_MODEL_PATH"] += (os.pathsep + model_path + os.pathsep
         + aircraft_model_dir)
-        os.environ["GAZEBO_RESOURCE_PATH"] += os.pathsep + world_path
-        os.environ["GAZEBO_PLUGIN_PATH"] += (os.pathsep + plugin_path + os.pathsep +
+        container_env["GAZEBO_RESOURCE_PATH"] += os.pathsep + world_path
+        container_env["GAZEBO_PLUGIN_PATH"] += (os.pathsep + plugin_path + os.pathsep +
 aircraft_plugin_dir)
 
 
-        print ("Gazebo Model Path =", os.environ["GAZEBO_MODEL_PATH"])
-        print ("Gazebo Plugin Path =",os.environ["GAZEBO_PLUGIN_PATH"] )
+        print ("Gazebo Model Path =", container_env["GAZEBO_MODEL_PATH"])
+        print ("Gazebo Plugin Path =",container_env["GAZEBO_PLUGIN_PATH"] )
 
         target_world = os.path.join(gz_assets_path, "worlds", self.world)
         p = None
         if self.verbose:
-            p = subprocess.Popen(["gzserver", "--verbose", target_world], shell=False) 
+            p = subprocess.Popen(["gzserver", "--verbose", target_world], shell=False, env=container_env) 
         else:
-            p = subprocess.Popen(["gzserver", target_world], shell=False) 
+            p = subprocess.Popen(["gzserver", target_world], shell=False, env=container_env) 
         print ("Starting gzserver with process ID=", p.pid)
         self.process_ids.append(p.pid)
 
