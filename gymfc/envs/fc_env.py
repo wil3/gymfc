@@ -323,7 +323,7 @@ class FlightControlEnv(ABC):
         print("Ctrl+C detected, shutting down gazebo and application")
         self.shutdown()
 
-    def update_env_variables(self, source_file):
+    def update_env_variables(self, source_file, env):
         """ Helper method to source the Gazebo source file to load in all 
         of the environment variables used by Gazebo.
         
@@ -337,7 +337,7 @@ class FlightControlEnv(ABC):
         pipe = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
         output = pipe.communicate()[0]
         lines = output.splitlines()
-        env = {}
+        gz_env = {}
         separated_v = ""
         last_k = None
         # OK this is super annoying to parse the env vars this way. Vars 
@@ -355,16 +355,16 @@ class FlightControlEnv(ABC):
                 # If we start a new var that means if there was 
                 # a separated value its now the end
                 if len(separated_v) > 0:
-                    env[last_k] = separated_v
+                    gz_env[last_k] = separated_v
                     separated_v = ""
-                env[kv[0]] = kv[1]
+                gz_env[kv[0]] = kv[1]
                 last_k = kv[0]
 
         # if it happens to be the last key
         if len(separated_v) > 0:
-            env[last_k] = separated_v
+            gz_env[last_k] = separated_v
 
-        os.environ.update(env)
+        env.update(gz_env)
 
     def _parse_model_sdf(self):
 
@@ -435,7 +435,7 @@ class FlightControlEnv(ABC):
         container_env["GYMFC_DIGITAL_TWIN_SDF"] = self.aircraft_sdf_filepath
 
         # Source the gazebo setup file to set up vars needed by the simuluator
-        self.update_env_variables(self.setup_file)
+        self.update_env_variables(self.setup_file, container_env)
 
         # This defines which network port gazebo will start on, we modify 
         # this so we can start multiple instances
