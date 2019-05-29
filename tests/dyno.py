@@ -21,10 +21,10 @@ def step_input(env, max_command):
         if env.sim_time > 2.0:
             break
     env.close()
-    f = "/home/wil/workspace/gymfc-nf1/digitaltwin/data/sim/step_{}.csv".format(int(max_command*100))
-    data = np.array(list(zip(ts, vels)))
-    np.savetxt(f, data, header="time,velocities", delimiter=",")
-    """
+
+    #data = np.array(list(zip(ts, vels)))
+    #f = None
+    #np.savetxt(f, data, header="time,velocities", delimiter=",")
     print ("plotting results")
     fig, ax = plt.subplots()
     color = 'r'
@@ -38,7 +38,6 @@ def step_input(env, max_command):
     ax.set_xlabel("t")
     ax.set_ylabel("Motor Velocity")
     plt.show()
-    """
 
 
 def step_sim(env, ac, delay=0):
