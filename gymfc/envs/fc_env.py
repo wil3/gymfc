@@ -24,7 +24,7 @@ class ActionPacket:
     def __init__(self, motor, world_control=Action_pb2.Action.STEP):
         """
         Args:
-            motor (np.array): an array of PWM values in the range [0, 1000] 
+            motor (np.array): an array of motor control signals.  
             world_control: 
         """
         self.motor = motor 
@@ -36,7 +36,7 @@ class ActionPacket:
     def encode(self):
         """  Encode packet data"""
         msg = self.ac.SerializeToString() 
-        #print ("Sending to Gazebo size=", len(msg), " ",   msg.hex())
+        #print ("Sending ", self.ac, " to Gazebo size=", len(msg), " ",   msg.hex())
         return msg
 
     def __str__(self):
@@ -528,7 +528,6 @@ aircraft_plugin_dir)
         self.sim_stats["time_lapse_hours"] = (time.time() - self.sim_stats["time_start_seconds"])/(60*60)
         self.print_post_simulation_stats()
         self.kill_sim()
-        raise SystemExit("Shuting down GymFC.")
 
     def reset(self):
         """ Reset the environment (compatible with OpenAI API).
