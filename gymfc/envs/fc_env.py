@@ -149,7 +149,7 @@ class FlightControlEnv(ABC):
         # Track process IDs so we can kill em
         self.process_ids = []
         if not loop:
-            self.loop = asyncio.get_event_loop()
+            self.loop = asyncio.new_event_loop()
         else:
             self.loop = loop
 
