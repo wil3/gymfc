@@ -17,10 +17,12 @@ message State
   repeated float  esc_temperature = 6 [packed=true];
   repeated float  esc_current = 7 [packed=true];
   repeated float  esc_voltage = 8 [packed=true];
+  repeated float  esc_force = 9 [packed=true];
+  repeated float  esc_torque = 10 [packed=true];
 
   // Vbat Sensor
-  optional float  vbat_voltage = 9;
-  optional float  vbat_current = 10;
+  optional float  vbat_voltage = 11;
+  optional float  vbat_current = 12;
 
   // Placeholder for additional codes
   enum StatusCode {
@@ -28,5 +30,5 @@ message State
     ERROR = 1;
   }
 
-  required StatusCode status_code = 11; 
+  required StatusCode status_code = 13; 
 }
