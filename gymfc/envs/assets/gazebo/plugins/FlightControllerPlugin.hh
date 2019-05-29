@@ -199,6 +199,9 @@ class FlightControllerPlugin : public WorldPlugin
   private: std::string centerOfThrustReferenceLinkName; 
   private: ignition::math::Vector3d cot;
   private: sdf::ElementPtr modelElement;
+
+
+  private: gazebo::physics::JointPtr ballJoint;
   };
 }
 #endif

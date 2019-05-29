@@ -266,6 +266,8 @@ void FlightControllerPlugin::InitState()
     this->state.add_esc_temperature(10000);
     this->state.add_esc_current(-1);
     this->state.add_esc_voltage(-1);
+    this->state.add_esc_torque(0);
+    this->state.add_esc_force(0);
   }
 
 }
@@ -280,6 +282,8 @@ void FlightControllerPlugin::EscSensorCallback(EscSensorPtr &_escSensor)
   this->state.set_esc_temperature(id, _escSensor->temperature());
   this->state.set_esc_current(id, _escSensor->current());
   this->state.set_esc_voltage(id, _escSensor->voltage());
+  this->state.set_esc_force(id, _escSensor->force());
+  this->state.set_esc_torque(id, _escSensor->torque());
   this->sensorCallbackCount++;
   this->callbackCondition.notify_all();
 
@@ -377,7 +381,7 @@ void FlightControllerPlugin::ParseDigitalTwinSDF()
 
   sdf::ElementPtr pluginPtr = this->modelElement->GetElement("plugin");
 
-  gzdbg << " Looking for plugin\n";
+  //gzdbg << " Looking for plugin\n";
   bool foundAircraftConfigPlugin = false;
   while(pluginPtr)
   {
@@ -388,7 +392,7 @@ void FlightControllerPlugin::ParseDigitalTwinSDF()
     }
     pluginPtr = pluginPtr->GetNextElement();
   }
-  gzdbg << " Done Looking for plugin\n";
+  //gzdbg << " Done Looking for plugin\n";
   if (!foundAircraftConfigPlugin)
   {
     gzerr << "Could not find required " << kAircraftConfigFileName << ". Aborting!" << std::endl;
@@ -461,6 +465,12 @@ void FlightControllerPlugin::LoadDigitalTwin()
     return;
   }
 
+  if (this->world->Name().compare("default") != 0)
+  {
+      gzdbg << "Using dyno, not linking aircraft to world" << std::endl;
+      return;
+  }
+
   physics::ModelPtr supportModel = this->world->ModelByName(kTrainingRigModelName);
   if (!supportModel){
     gzerr << "Could not find training rig model." << std::endl;
@@ -479,6 +489,7 @@ void FlightControllerPlugin::LoadDigitalTwin()
   joint = this->world->Physics()->CreateJoint("ball", supportModel);
   joint->SetName("ball_joint");
   joint->Attach(supportModel->GetLink("pivot"), centerOfThrustReferenceLink);
+  this->ballJoint = joint;
 
 
   if (this->world->Physics()->GetType().compare("dart") == 0)
@@ -582,14 +593,24 @@ void FlightControllerPlugin::LoopThread()
 	while (1){
 
 		bool ac_received = this->ReceiveAction();
+        //ignition::math::Vector3d f = this->world->ModelByName(kTrainingRigModelName)->GetLink("pivot")->RelativeForce();
 
     //gzdbg << "Received?" << ac_received << std::endl;
 		if (!ac_received){
         continue;
     }
-    //gzdbg << "Action = " << this->action.motor(0) << "," << this->action.motor(1) << "," << this->action.motor(2) << "," << this->action.motor(3) << std::endl;
+
+        /* XXX This is a way to get force applied to possibly use for reward   
+        ignition::math::Vector3d f = this->ballJoint->GetForceTorque(0).body1Force;
+        gzdbg << "Force X=" << f.X() << " Y=" << f.Y() << " Z=" << f.Z() << std::endl;
+        ignition::math::Vector3d f2 = this->ballJoint->GetForceTorque(0).body2Force;
+        gzdbg << "Force Body 2 X=" << f2.X() << " Y=" << f2.Y() << " Z=" << f2.Z() << std::endl;
+        */
+
 
     // Handle reset command
+//  if (this->world->Name().compare("default") == 0)
+ // {
     if (this->action.world_control() == gymfc::msgs::Action::RESET)
     {
       //gzdbg << " Flushing sensors..." << std::endl;
@@ -601,6 +622,7 @@ void FlightControllerPlugin::LoopThread()
       this->SendState();
       continue;
     }
+  //}
 
     this->ResetCallbackCount();
     //gzdbg << "Callback count " << this->sensorCallbackCount << std::endl;
