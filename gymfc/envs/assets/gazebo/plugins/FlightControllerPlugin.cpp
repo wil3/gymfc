@@ -243,6 +243,11 @@ void FlightControllerPlugin::LoadVars()
 
 void FlightControllerPlugin::InitState()
 {
+  for (unsigned int i = 0; i < 3; i++)
+  {
+	  this->state.add_force(0);
+  }
+
   //XXX Initialize the state of the senors to a value
   // that reflect the aircraft in an active state thus 
   // forcing the sensors to be flushed.
@@ -601,11 +606,12 @@ void FlightControllerPlugin::LoopThread()
     }
 
         /* XXX This is a way to get force applied to possibly use for reward   
-        ignition::math::Vector3d f = this->ballJoint->GetForceTorque(0).body1Force;
-        gzdbg << "Force X=" << f.X() << " Y=" << f.Y() << " Z=" << f.Z() << std::endl;
-        ignition::math::Vector3d f2 = this->ballJoint->GetForceTorque(0).body2Force;
-        gzdbg << "Force Body 2 X=" << f2.X() << " Y=" << f2.Y() << " Z=" << f2.Z() << std::endl;
-        */
+		 */
+        this->ballJointForce = this->ballJoint->GetForceTorque(0).body1Force;
+        //gzdbg << "Force X=" << f.X() << " Y=" << f.Y() << " Z=" << f.Z() << std::endl;
+        //ignition::math::Vector3d f2 = this->ballJoint->GetForceTorque(0).body2Force;
+        //gzdbg << "Force Body 2 X=" << f2.X() << " Y=" << f2.Y() << " Z=" << f2.Z() << std::endl;
+        
 
 
     // Handle reset command
@@ -670,6 +676,10 @@ void FlightControllerPlugin::CalculateCallbackCount()
 } 
 void FlightControllerPlugin::WaitForSensorsThenSend()
 {
+  this->state.set_force(0, this->ballJointForce.X());
+  this->state.set_force(1, this->ballJointForce.Y());
+  this->state.set_force(2, this->ballJointForce.Z());
+
   this->state.set_sim_time(this->world->SimTime().Double());
   this->state.set_status_code(gymfc::msgs::State_StatusCode_OK);
 

@@ -202,6 +202,7 @@ class FlightControllerPlugin : public WorldPlugin
 
 
   private: gazebo::physics::JointPtr ballJoint;
+  private: ignition::math::Vector3d ballJointForce;
   };
 }
 #endif

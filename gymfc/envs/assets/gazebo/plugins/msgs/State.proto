@@ -31,4 +31,8 @@ message State
   }
 
   required StatusCode status_code = 13; 
+
+  // Force applied to the ball joint
+  repeated float force = 14 [packed=true];
+
 }

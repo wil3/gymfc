@@ -303,6 +303,7 @@ class FlightControlEnv(ABC):
 
         # Handle some special cases
         self.sim_time = np.around(self.state_message.sim_time , 3)
+        self.force = self.state_message.force
         #self.rate_actual = np.array(list(self.state_message.imu_angular_velocity_rpy))
         #print ("Actual rate=", self.rate_actual)
         # Update the error
