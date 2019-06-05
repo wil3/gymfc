@@ -480,6 +480,7 @@ aircraft_plugin_dir)
             p = subprocess.Popen(["gzserver", "--verbose", target_world], shell=False, env=container_env) 
         else:
             p = subprocess.Popen(["gzserver", target_world], shell=False, env=container_env) 
+        self.env = container_env
         print ("Starting gzserver with process ID=", p.pid)
         self.process_ids.append(p.pid)
 
@@ -552,7 +553,7 @@ aircraft_plugin_dir)
 
     def render(self, mode='human'):
         """ Launch the Gazebo client """
-        p = subprocess.Popen(["gzclient"], shell=False)
+        p = subprocess.Popen(["gzclient"], shell=False, env=self.env)
         self.process_ids.append(p.pid)
 
 
