@@ -371,7 +371,7 @@ class FlightControlEnv(ABC):
 
         # Digital twin
         if not os.path.isfile(self.aircraft_sdf_filepath):
-            message = "Aircraft SDF file  at location '{}' does not exist.".format(digitaltwin_config_path)
+            message = "Aircraft SDF file  at location '{}' does not exist.".format(self.aircraft_sdf_filepath)
             raise ConfigLoadException(message)
 
         tree = ET.parse(self.aircraft_sdf_filepath)
