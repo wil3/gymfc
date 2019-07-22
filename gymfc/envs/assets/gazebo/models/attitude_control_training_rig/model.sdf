@@ -1,0 +1,39 @@
+<?xml version='1.0'?>
+<sdf version="1.6">
+ <model name="attitude_control_training_rig">
+	 
+	<enable_wind>true</enable_wind>
+	<pose>0 0 0 0 0 0</pose> 
+    <link name="pivot">
+   
+        <!-- Uncomment for debugging
+      <visual name="pivot_visual">
+        <pose>0 0 0 0 -0 0</pose>
+        <geometry>
+            <sphere>
+                <radius>0.01</radius>
+            </sphere>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/Red</name>
+            <uri>__default__</uri>
+          </script>
+        </material>
+      </visual> -->
+   
+    </link>
+
+    <!-- XXX Fix the pivot base to the world, can't create
+         ball joint directly to the world because it hasn't been figured
+         out how to do this programmically. 
+
+        See http://answers.gazebosim.org/question/22102/how-to-use-world-as-a-joint-link-programmically/ -->
+	<joint name="base_joint" type="fixed">
+		<parent>world</parent>
+		<child>pivot</child>
+		<pose>0 0 0 0 0 0</pose>
+	</joint>
+
+  </model>
+</sdf>

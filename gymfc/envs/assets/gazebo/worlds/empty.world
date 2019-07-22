@@ -1,0 +1,56 @@
+<?xml version="1.0" ?>
+
+<sdf version="1.6">
+  <world name="dyno">
+
+    <gui>
+      <camera name="user_camera">
+        <pose>-1 0 0.25 0 0.2 0</pose>
+      </camera>
+    </gui>
+
+    <physics type="dart">
+      <real_time_update_rate>0</real_time_update_rate>
+	  <max_step_size>0.001</max_step_size> 
+   </physics>
+
+    <!--
+   <physics type="ode">
+      <ode>
+        <solver>
+          <type>quick</type>
+          <iters>100</iters>
+          <sor>1.0</sor>
+        </solver>
+        <constraints>
+          <cfm>0.0</cfm>
+          <erp>0.2</erp>
+          <contact_max_correcting_vel>0.1</contact_max_correcting_vel>
+          <contact_surface_layer>0.0</contact_surface_layer>
+        </constraints>
+      </ode>
+
+      <real_time_update_rate>0</real_time_update_rate>
+	  <max_step_size>0.001</max_step_size>
+   </physics>
+    -->
+
+   <!-- Global light source -->
+    <include>
+      <uri>model://sun</uri>
+    </include>
+    <include>
+      <uri>model://ground_plane</uri>
+    </include>
+
+
+
+    <plugin name="gymfc_plugin" filename="libFlightControllerPlugin.so">
+      <connectionTimeoutMaxCount>5</connectionTimeoutMaxCount>
+      <loopRate>1000.0</loopRate>
+      <robotNamespace>gymfc</robotNamespace>
+    </plugin>
+
+
+  </world>
+</sdf>

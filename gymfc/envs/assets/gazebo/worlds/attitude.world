@@ -5,10 +5,17 @@
 
     <gui>
       <camera name="user_camera">
-        <pose>-5 0 1 0 0.2 0</pose>
+        <pose>-1 0 0.25 0 0.2 0</pose>
       </camera>
     </gui>
-    <physics type="ode">
+
+    <physics type="dart">
+      <real_time_update_rate>0</real_time_update_rate>
+	  <max_step_size>0.001</max_step_size> 
+   </physics>
+
+    <!--
+   <physics type="ode">
       <ode>
         <solver>
           <type>quick</type>
@@ -23,76 +30,25 @@
         </constraints>
       </ode>
 
-	  <!-- Run faster -->
       <real_time_update_rate>0</real_time_update_rate>
-	  <max_step_size>0.001</max_step_size> 
+	  <max_step_size>0.001</max_step_size>
    </physics>
+    -->
 
    <!-- Global light source -->
     <include>
       <uri>model://sun</uri>
     </include>
 
-    <model name="quadcopter_attitude_control">
-      <include>
-		  <uri>model://quadcopter_attitude_control</uri>
-      </include>
-    </model>
+    <include>
+      <uri>model://attitude_control_training_rig</uri>
+    </include>
 
 
-    <plugin name="arducopter_plugin" filename="libQuadcopterWorldPlugin.so">
-	  <modelName>quadcopter_attitude_control</modelName> <!-- We are a world plugin so need access to model -->
-      <imuName>quadcopter_attitude_control::quadcopter::quadcopter_model::quadcopter_model/imu_link::imu_sensor</imuName>
+    <plugin name="gymfc_plugin" filename="libFlightControllerPlugin.so">
       <connectionTimeoutMaxCount>5</connectionTimeoutMaxCount>
-	  <loopRate>1000.0</loopRate>
-      <rotor id="0">
-        <vel_p_gain>0.01</vel_p_gain>
-        <vel_i_gain>0</vel_i_gain>
-        <vel_d_gain>0</vel_d_gain>
-        <vel_i_max>0</vel_i_max>
-        <vel_i_min>0</vel_i_min>
-        <vel_cmd_max>2.0</vel_cmd_max>
-        <vel_cmd_min>-2.0</vel_cmd_min>
-        <jointName>quadcopter_attitude_control::quadcopter::quadcopter_model::rotor_0_joint</jointName>
-        <turningDirection>ccw</turningDirection>
-        <rotorVelocitySlowdownSim>1</rotorVelocitySlowdownSim>
-      </rotor>
-      <rotor id="1">
-        <vel_p_gain>0.01</vel_p_gain>
-        <vel_i_gain>0</vel_i_gain>
-        <vel_d_gain>0</vel_d_gain>
-        <vel_i_max>0</vel_i_max>
-        <vel_i_min>0</vel_i_min>
-        <vel_cmd_max>2.0</vel_cmd_max>
-        <vel_cmd_min>-2.0</vel_cmd_min>
-        <jointName>quadcopter_attitude_control::quadcopter::quadcopter_model::rotor_1_joint</jointName>
-        <turningDirection>ccw</turningDirection>
-        <rotorVelocitySlowdownSim>1</rotorVelocitySlowdownSim>
-      </rotor>
-      <rotor id="2">
-        <vel_p_gain>0.01</vel_p_gain>
-        <vel_i_gain>0</vel_i_gain>
-        <vel_d_gain>0</vel_d_gain>
-        <vel_i_max>0</vel_i_max>
-        <vel_i_min>0</vel_i_min>
-        <vel_cmd_max>2.0</vel_cmd_max>
-        <vel_cmd_min>-2.0</vel_cmd_min>
-        <jointName>quadcopter_attitude_control::quadcopter::quadcopter_model::rotor_2_joint</jointName>
-        <turningDirection>cw</turningDirection>
-        <rotorVelocitySlowdownSim>1</rotorVelocitySlowdownSim>
-      </rotor>
-      <rotor id="3">
-        <vel_p_gain>0.01</vel_p_gain>
-        <vel_i_gain>0</vel_i_gain>
-        <vel_d_gain>0</vel_d_gain>
-        <vel_i_max>0</vel_i_max>
-        <vel_i_min>0</vel_i_min>
-        <vel_cmd_max>2.0</vel_cmd_max>
-        <vel_cmd_min>-2.0</vel_cmd_min>
-        <jointName>quadcopter_attitude_control::quadcopter::quadcopter_model::rotor_3_joint</jointName>
-        <turningDirection>cw</turningDirection>
-        <rotorVelocitySlowdownSim>1</rotorVelocitySlowdownSim>
-      </rotor>
+      <loopRate>1000.0</loopRate>
+      <robotNamespace>gymfc</robotNamespace>
     </plugin>
 
 

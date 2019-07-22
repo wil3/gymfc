@@ -1,0 +1,38 @@
+syntax = "proto2";
+package gymfc.msgs;
+
+/* Reinforcement learning environment state represents the aircraft state */
+
+message State
+{
+  required float  sim_time = 1;
+  
+  // IMU sensor values, units are defined by the users aircraft digital twin
+  repeated float  imu_angular_velocity_rpy = 2 [packed=true];
+  repeated float  imu_linear_acceleration_xyz = 3 [packed=true];
+  repeated float  imu_orientation_quat= 4 [packed=true];
+
+  // ESC Sensor values, units are defined by the users aircraft digital twin
+  repeated float  esc_motor_angular_velocity = 5 [packed=true];
+  repeated float  esc_temperature = 6 [packed=true];
+  repeated float  esc_current = 7 [packed=true];
+  repeated float  esc_voltage = 8 [packed=true];
+  repeated float  esc_force = 9 [packed=true];
+  repeated float  esc_torque = 10 [packed=true];
+
+  // Vbat Sensor
+  optional float  vbat_voltage = 11;
+  optional float  vbat_current = 12;
+
+  // Placeholder for additional codes
+  enum StatusCode {
+    OK = 0;
+    ERROR = 1;
+  }
+
+  required StatusCode status_code = 13; 
+
+  // Force applied to the ball joint
+  repeated float force = 14 [packed=true];
+
+}
