@@ -396,11 +396,16 @@ class FlightControlEnv(ABC):
                 "enable_angular_velocity": "esc_motor_angular_velocity",
                 "enable_temperature": "esc_temperature",
                 "enable_current": "esc_current",
-                "enable_voltage": "esc_voltage"
+                "enable_voltage": "esc_voltage",
+                "enable_force": "esc_force",
+                "enable_torque": "esc_torque"
             },
             "battery": {
                 "enable_voltage":  "vbat_voltage",
                 "enable_current": "vbat_current"
+            },
+            "position": {
+                "enable_gps": "gps"
             }
         }
         sensors = plugin_el.find("sensors")
