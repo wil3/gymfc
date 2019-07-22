@@ -1,12 +1,14 @@
 # GymFC
 
-GymFC is a simulation environment for developing and testing flight control systems with a focus in attitude control. 
-Intially GymFC was first introduced in the [manuscript]() "Reinforcement learning for UAV attitude control" in which the simulator was used to
+GymFC is flight control tuning framework with a focus in attitude control. 
+Intially GymFC was first introduced in the [manuscript](http://wfk.io/docs/gymfc.pdf) "Reinforcement learning for UAV attitude control" in which the simulator was used to
 synthesize neuro-flight attitude controllers that exceeded the performance of a traditional PID controller. 
-Since the intial release of the project is has matured, and become more modular
-to support a wide range of flight control system and aircraft.
+Since the intial release of the project is has matured and become a modular
+framework
+for tuning flight controllers system, not only for synthesizing neuro-flight
+controllers but also tuning traditional controllers as well. 
 Currently, GymFC is the primary method for developing controllers to be used in the worlds
-first neural network based
+first neural network supported
 flight control firmware [Neuroflight](https://wfk.io/neuroflight). 
 Please use the following BibTex entry to cite our work,
 ```
@@ -51,9 +53,6 @@ Please use the following BibTex entry to cite our work,
 # News
 
 * July 2019 - GymFC v0.2.0 is released. 
-The new GymFC version is a major rewrite with substantial architectural
-change emphasizing core principles such as controller development for a specific aircraft.
-GymFC is now essentially a generic flight control environment middleware between the aircraft digital twin and the agent interface. Users now are responsible for implementing the agent interface and the digital twin; which are both unique to the aircraft.
 * December 2018 - Our GymFC manuscript is accepted to the journal ACM Transactions on Cyber-Physical Systems.
 * November 2018 - Flight controller synthesized with GymFC achieves stable
   flight in [Neuroflight](https://github.com/wil3/neuroflight).
@@ -65,9 +64,14 @@ GymFC is now essentially a generic flight control environment middleware between
 
 Note, Ubuntu 16.04 LTS and 18.04 LTS are the only OS currently supported. Please submit a PR for the
 README.md if you are
-able to get it working on another platform.   
-1. Install [Gazebo 9](http://gazebosim.org/download) with `sudo
-   apt-get install gazebo9.`. Then the dev package required for building the plugins, `sudo apt-get install libgazebo9-dev`.
+able to get it working on another platform. To ensure accurate and stable
+simulations it is recommended to use DART with Gazebo. This requires Gazebo to
+be installed from source. For more information please see this
+[video](https://www.youtube.com/watch?v=d3NyFU0bVT0).  We have found these
+versions to work well together,
+1. Compile and install DART v6.7 from source
+   [here](https://github.com/dartsim/dart/tree/v6.7.0).
+1. Compile and install [Gazebo 10](http://gazebosim.org/tutorials?tut=install_from_source&cat=install). 
 2. (Optional) It is suggested to set up a [virtual environment](https://docs.python.org/3/library/venv.html). From the project root,
    `python3 -m venv env`. This will create an environment named `env` which
 will be ignored by git. To enable the virtual environment, `source
