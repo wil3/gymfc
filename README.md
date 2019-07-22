@@ -23,6 +23,9 @@ Please use the following BibTex entry to cite our work,
   publisher={ACM}
 }
 ```
+
+> :warning: **Warning:** Documentation is lagging behind in regards to the new framework and installation instructions. 
+
 ## Table of contents
 
 * Installation
