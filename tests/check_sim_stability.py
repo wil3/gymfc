@@ -171,7 +171,7 @@ def step_sim(env, logger):
         np.array([1, 0, 1, 1]),  # Yaw CW
         np.array([1, 1, 0, 1]),  # Yaw CW
         np.array([1, 1, 1, 0])  # Yaw CW
-        ]
+    ]
 
     for m in motor_commands:
 
@@ -200,7 +200,7 @@ def step_sim(env, logger):
 
 def step_loop(args, logger):
     loop = asyncio.new_event_loop()
-    env = Sim(args.aircraftconfig, config_filepath=args.gymfc_config, max_sim_time=args.max_sim_time, loop = loop)
+    env = Sim(args.aircraftconfig, config_filepath=args.gymfc_config, max_sim_time=args.max_sim_time, loop = loop, verbose=False)
     if args.render:
         env.render()
     step_sim(env, logger)
@@ -221,24 +221,14 @@ def start(env, capture):
 
 class Sim(FlightControlEnv):
 
-    def __init__(self, aircraft_config, config_filepath=None, max_sim_time=1, loop=None):
-        super().__init__(aircraft_config, config_filepath=config_filepath, loop=loop)
+    def __init__(self, aircraft_config, config_filepath=None, max_sim_time=1,
+                 loop=None, verbose=True):
+        super().__init__(aircraft_config, config_filepath=config_filepath,
+                         loop=loop, verbose=verbose)
         self.max_sim_time = max_sim_time
-
-    def state(self):
-        pass
-
-    def desired_state(self):
-        pass
 
     def is_done(self):
         return self.sim_time > self.max_sim_time
-
-    def on_observation(self, ob):
-        pass
-
-    def on_reset(self):
-        pass
 
 class DataLogger:
     """ Class to store all the results, resources aren't shared so 
@@ -255,6 +245,7 @@ class DataLogger:
         # Use this to normalize
         self.min_d_sum = 1e6 
         self.max_d_sum = 0
+        self.min_rate = np.array([1e6]*3)
 
     def add_aircraft_io(self, data):
         if len(self.data_ac) <= self.trial_index:
@@ -263,6 +254,7 @@ class DataLogger:
             self.data_ac[self.trial_index].append(data)
 
     def add_stability(self, data):
+        """ Data where data is an array with elements t and the sum of the diffs"""
         d_sum = data[1]
         if self.min_d_sum > d_sum:
             self.min_d_sum = d_sum 
@@ -276,22 +268,26 @@ class DataLogger:
 
     def process_results(self):
         """ Sync the results up accoding to the sim time and determine
-        which rates are stable and instable in the sim """
+        which rates are stable and instable in the sim 
+        Returns Array or RPYs, Max rate that is stable, color for each RPY point, """
         threshold = 0.001 #1mm
         instable = []
         stable = []
 
         d_range = self.max_d_sum - self.min_d_sum
+        print ("Min=", self.min_d_sum)
+        print ("Max=", self.max_d_sum)
         print ("D range=", d_range)
+
 
         norm = matplotlib.colors.Normalize(vmin=self.min_d_sum, vmax=self.max_d_sum, clip=True)
         mapper = cm.ScalarMappable(norm=norm, cmap=cm.plasma)
 
-        print (self.data_pose)
+        #print (self.data_pose)
         max_r = 0
         colors = []
         rates = []
-        ds = []
+        ds = [] #array of distance sums
 
         for i in range(len(self.data_pose)):
 
@@ -302,8 +298,8 @@ class DataLogger:
                 found_row = ac_trial[np.where(ac_trial[:,0] == t)]
                 if len(found_row) > 0:
                     rate = found_row[0][1:]
-                    print ("t=", t, " d_sum", d_sum)
-                    print (found_row)
+                    #print ("t=", t, " d_sum", d_sum)
+                    #print (found_row)
 
                     colors.append(mapper.to_rgba(d_sum))
                     rates.append(rate)
@@ -311,6 +307,8 @@ class DataLogger:
 
                     if d_sum >= threshold:
                         instable.append(rate)
+                        if (rate < self.min_rate).all():
+                            self.min_rate = rate.copy()
                     else:
                         stable.append(rate)
                         r = np.linalg.norm(rate)
@@ -318,13 +316,14 @@ class DataLogger:
                             max_r = r
             #print ("t=", t, " rpy=", rate)
         #return np.array(instable), np.array(stable), max_r, colors
+        print ("Instability occurs at ", self.min_rate)
+        np.savetxt("/tmp/unstable.txt", instable )
         return np.array(rates), max_r, colors, ds
 
     def plot(self):
 
         #instable, stable, r, colors = self.process_results()
         rates, r, colors, ds = self.process_results()
-        print ("Colors=", colors)
 
         #print ("Instable", instable)
         #print ("Stable", stable)
@@ -350,9 +349,9 @@ class DataLogger:
         #ax.plot_wireframe(x, y, z, color="b")
 
 
-        ax.set_xlabel('Roll (rad/s)')
-        ax.set_ylabel('Pitch (rad/s)')
-        ax.set_zlabel('Yaw (rad/s)')
+        ax.set_xlabel('Roll (deg/s)')
+        ax.set_ylabel('Pitch (deg/s)')
+        ax.set_zlabel('Yaw (deg/s)')
 
         """
         if len(instable)>0:
@@ -368,7 +367,7 @@ class DataLogger:
             "bullet" : "Bullet",
             "simbody" : "Simbody"
         }
-        plt.title("{} Physics Engine - Step size {}".format(title_mapping[self.physics_type], self.step_size))
+        #plt.title("{} Physics Engine - Step size {}".format(title_mapping[self.physics_type], self.step_size))
 
         #_data = plt.cm.jet()
 
