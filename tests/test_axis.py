@@ -29,7 +29,11 @@ def step_sim(env, delay=0, scale=1):
         ob = env.reset()
         while True:
             ob = env.step_sim(m * scale)
-            print ("Angular Velocity=", env.imu_angular_velocity_rpy)
+            print ("Roll={:.4f} Pitch={:.4f} Yaw={:.4f}".format(*env.imu_angular_velocity_rpy.tolist()))
+            print ("X={:.4f} Y={:.4f} Z={:.4f}".format(*env.imu_linear_acceleration_xyz))
+            print ("X={:.4f} Y={:.4f} Z={:.4f} W={:.4f}".format(*env.imu_orientation_quat))
+            if hasattr(env, "esc_motor_angular_velocity"):
+                print ("M1={:.4f} M2={:.4f} M3={:.4f} M4={:.4f}".format(*env.esc_motor_angular_velocity))
             s = input("[enter] = Step, n = Next Command, q = Quit")
             if s == 'n' or env.is_done():
                 break
@@ -40,24 +44,11 @@ def step_sim(env, delay=0, scale=1):
 
 class Sim(FlightControlEnv):
 
-    def __init__(self, aircraft_config, config_filepath=None, max_sim_time=1):
-        super().__init__(aircraft_config, config_filepath=config_filepath, verbose=False)
+    def __init__(self, aircraft_config, config_filepath=None, max_sim_time=1, verbose=False):
+        super().__init__(aircraft_config, config_filepath=config_filepath, verbose=verbose)
         self.max_sim_time = max_sim_time
-
-    def state(self):
-        pass
-
-    def desired_state(self):
-        pass
-
     def is_done(self):
         return self.sim_time > self.max_sim_time
-
-    def on_observation(self, ob):
-        pass
-
-    def on_reset(self):
-        pass
 
 if __name__ == "__main__":
 
@@ -67,11 +58,12 @@ if __name__ == "__main__":
     parser.add_argument('--delay', default=0, type=float, help="Second delay betwee steps for debugging purposes.")
     parser.add_argument('--scale', default=1, type=float, help="Scale for the motor.")
     parser.add_argument('--max-sim-time', default=1, type=float, help="Time in seconds the sim should run for.")
+    parser.add_argument('--verbose', action="store_true")
 
 
     args = parser.parse_args()
 
-    env = Sim(args.aircraftconfig, config_filepath=args.gymfc_config, max_sim_time=args.max_sim_time)
+    env = Sim(args.aircraftconfig, config_filepath=args.gymfc_config, max_sim_time=args.max_sim_time, verbose=args.verbose)
     env.render()
     step_sim(env, delay=args.delay, scale=args.scale)
 
