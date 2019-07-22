@@ -21,10 +21,20 @@ Please use the following BibTex entry to cite our work,
   publisher={ACM}
 }
 ```
+## Table of contents
+
+* Installation
+* Features
+* News
+* Development Team
+* Contributions
+
+
+
 
 # Features
 
-* Support for IMU and ESC sensors
+* Support for IMU, ESC and battery sensors
 * Aircraft agnostic - support for any type of aircraft just configure number of
   actuators and sensors.
 * Digital twin independence - digital twin is developed external to GymFC
@@ -40,9 +50,9 @@ Please use the following BibTex entry to cite our work,
 
 # News
 
-* March 2019 - GymFC v0.2.0 is released. 
+* July 2019 - GymFC v0.2.0 is released. 
 The new GymFC version is a major rewrite with substantial architectural
-change emphasizing core princiles such as ocntroller development for a specific aircraft.
+change emphasizing core principles such as controller development for a specific aircraft.
 GymFC is now essentially a generic flight control environment middleware between the aircraft digital twin and the agent interface. Users now are responsible for implementing the agent interface and the digital twin; which are both unique to the aircraft.
 * December 2018 - Our GymFC manuscript is accepted to the journal ACM Transactions on Cyber-Physical Systems.
 * November 2018 - Flight controller synthesized with GymFC achieves stable
@@ -76,7 +86,7 @@ need to build the plugin manually by running the script
 
 ## Digital Twin 
 For simplicity the GymFC environment takes as input the aircraft `model.sdf` which contains all properties for the
-aircaft in a single location. The SDF delares all the visualizations, geometries and plugins for the aircraft.
+aircaft in a single location. The SDF declares all the visualizations, geometries and plugins for the aircraft.
 
 ### Directory Layout
 GymFC expects your model to have the following Gazebo style directory structure: 
@@ -157,4 +167,8 @@ minimum the aircraft must subscribe to motor commands and publish IMU messages
 *Message Type* EscSensor.proto
 
 ## Agent Interface
+
+
+# Development Team and Contributions
+GymFC was developed and currently maintained by [Wil Koch](https://wfk.io).
 
