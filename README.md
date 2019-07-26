@@ -26,13 +26,21 @@ Please use the following BibTex entry to cite our work,
 
 ![Architecture](https://github.com/wil3/gymfc/blob/master/images/gymfc2-arch.png)
 
-> :warning: **Warning:** Documentation is lagging behind in regards to the new framework and installation instructions. Migration to GymFC2 is going to take some effort however it provides a sustainable framework moving forward. Documentation and additional examples will be added with time. Please open issues and PRs to contribute. 
+> :warning: **Warning:** Documentation is lagging behind in regards to the new
+> framework and installation instructions. Migration to GymFC2 is going to take
+> some effort however it provides a sustainable framework moving forward.
+> Documentation and additional examples will be added with time. Best bet at
+> the moment is to read through the code, python side is in good shape, c++
+> needs love.  
 
 ## Table of contents
 
 * [Features](https://github.com/wil3/gymfc#features)
 * [News](https://github.com/wil3/gymfc#news)
 * [Installation](https://github.com/wil3/gymfc#installation)
+* [Getting Started](https://github.com/wil3/gymfc#getting-started)
+* [User Modules](https://github.com/wil3/gymfc#available-user-provided-modules)
+* [Custom Modules](https://github.com/wil3/gymfc#custom-user-modules)
 * [Development Team](https://github.com/wil3/gymfc#)
 * [Contributions](https://github.com/wil3/gymfc#contributions)
 
@@ -137,25 +145,25 @@ provide four modules: A flight controller, a flight control tuner, environment
 interface, and digital twin. (Note: for neuro-flight controllers typically the
 flight controller and tuner are one in the same, e.g., OpenAI baselines) This will expand the flight control research that
 can be done with GymFC. For example this opens up the possibilities for tuning
-PID gains with GAs for PSO. The goal is to provide a collection of open source
+PID gains using optimization strategies such as GAs and PSO. The goal is to provide a collection of open source
 modules for users to mix and match. If you have created your own, please let us
 know and we will add it below.
  
-# Tuners
+## Tuners
 
 * [OpenAI baselines](https://github.com/openai/baselines)
 
-# Environments
+## Environments
 
 WIP
 
-# Digital Twins
+## Digital Twins
 
 * [Solo](https://github.com/wil3/gymfc-digitaltwin-solo) Needs help!
 
 ## Motor models
 
-* [Element blade theory] (https://github.com/wil3/gymfc-aircraft-plugins)
+* [Element blade theory](https://github.com/wil3/gymfc-aircraft-plugins)
 
 
 # Custom User Modules
