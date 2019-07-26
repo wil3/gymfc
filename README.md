@@ -49,10 +49,8 @@ Please use the following BibTex entry to cite our work,
 * Google protobuf aircraft digital twin API for publishing control
   signals and subscribing to sensor data. 
 * Flexible agent interface allowing controller development for any type of flight control systems.
-* Compatible with OpenAI environments.
 * Support for Gazebo 8, 9, and 11. Gazebo plugins are built dynamically depending on
   your installed version. 
-* Configurable through JSON
 
 
 # News
