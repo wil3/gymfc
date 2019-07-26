@@ -1,4 +1,4 @@
-# GymFC
+![GymFC](https://github.com/wil3/gymfc/blob/master/images/gymfc-logo.png)
 
 GymFC is flight control tuning framework with a focus in attitude control. 
 Intially GymFC was first introduced in the [manuscript](http://wfk.io/docs/gymfc.pdf) "Reinforcement learning for UAV attitude control" in which the simulator was used to
@@ -24,15 +24,17 @@ Please use the following BibTex entry to cite our work,
 }
 ```
 
-> :warning: **Warning:** Documentation is lagging behind in regards to the new framework and installation instructions. 
+![Architecture](https://github.com/wil3/gymfc/blob/master/images/gymfc2-arch.png)
+
+> :warning: **Warning:** Documentation is lagging behind in regards to the new framework and installation instructions. Migration to GymFC2 is going to take some effort however it provides a sustainable framework moving forward. Documentation and additional examples will be added with time. Please open issues and PRs to contribute. 
 
 ## Table of contents
 
-* Installation
-* Features
-* News
-* Development Team
-* Contributions
+* [Features](https://github.com/wil3/gymfc#features)
+* [News](https://github.com/wil3/gymfc#news)
+* [Installation](https://github.com/wil3/gymfc#installation)
+* [Development Team](https://github.com/wil3/gymfc#)
+* [Contributions](https://github.com/wil3/gymfc#contributions)
 
 
 
@@ -79,21 +81,36 @@ versions to work well together,
    `python3 -m venv env`. This will create an environment named `env` which
 will be ignored by git. To enable the virtual environment, `source
 env/bin/activate` and to deactivate, `deactivate`.  
-2. From root directory of this project, `pip3 install .`
+2. From root directory of this project, `pip3 install .` If you plan to work with the GymFC source code you will want to install it in
+development mode, `pip3 install -e .` You will also
+need to build the plugin manually by running the script
+`gymfc/envs/assets/gazebo/plugins/build_plugin.sh`.
 3. Confirm `SetupFile` in `gymfc.ini` is pointing to the correct location.
 
 
-# Development 
+# Getting Started 
 
-If you plan to work with the GymFC source code you will want to install it in
-development mode, `pip3 install -e .` from the root directory. You will also
-need to build the plugin manually by running the script
-`gymfc/envs/assets/gazebo/plugins/build_plugin.sh`. 
+The simpilist environment can be created with,
 
+```python
+from gymfc.envs.fc_env import FlightControlEnv
+class MyEnv(FlightControlEnv):
+    def __init__(self, aircraft_config, config=None, verbose=False):
+        super().__init__(aircraft_config, config_filepath=config, verbose=verbose)
+```
 
-## Digital Twin 
-For simplicity the GymFC environment takes as input the aircraft `model.sdf` which contains all properties for the
-aircaft in a single location. The SDF declares all the visualizations, geometries and plugins for the aircraft.
+By inheritting FlightControlEnv you now have access to the `step_sim` and
+`reset` functions. If you want to create an OpenAI gym you also need to inherit
+this class e.g.,
+
+```python
+
+from gymfc.envs.fc_env import FlightControlEnv
+import gym
+class MyOpenAIEnv(FlightControlEnv, gym.Env):  
+```
+ 
+For simplicity the GymFC environment takes as input a single `aircraft_config` which is the file location of your aircraft model  `model.sdf`. The SDF declares all the visualizations, geometries and plugins for the aircraft.
 
 ### Directory Layout
 GymFC expects your model to have the following Gazebo style directory structure: 
@@ -106,14 +123,49 @@ model_name/
 ```
 where the `plugin` directory contains the  source for your plugins and the
 `build` directory will contain the built binary plugins. GymFC will, at
-runtime, add the build directory to the Gazebo plugin path.
+runtime, add the build directory to the Gazebo plugin path so they can be found and loaded.
 
-If you are using external plugins (e.g.,[gymfc-aircraft-plugins](https://github.com/wil3/gymfc-aircraft-plugins) ) create soft links
+NOTE! If you are using external plugins create soft links
 to each .so file in the build directory.
 
 
 
-### SDF
+
+
+# Available User Provided Modules
+
+To increase flexability and provide a universal tuning framework, the user must
+provide four modules: A flight controller, a flight control tuner, environment
+interface, and digital twin. (Note: for neuro-flight controllers typically the
+flight controller and tuner are one in the same, e.g., OpenAI baselines) This will expand the flight control research that
+can be done with GymFC. For example this opens up the possibilities for tuning
+PID gains with GAs for PSO. The goal is to provide a collection of open source
+modules for users to mix and match. If you have created your own, please let us
+know and we will add it below.
+ 
+# Tuners
+
+* [OpenAI baselines](https://github.com/openai/baselines)
+
+# Environments
+
+WIP
+
+# Digital Twins
+
+* [Solo](https://github.com/wil3/gymfc-digitaltwin-solo) Needs help!
+
+## Motor models
+
+* [Element blade theory] (https://github.com/wil3/gymfc-aircraft-plugins)
+
+
+# Custom User Modules
+
+### Digital Twin 
+
+
+## SDF
 
 Each model.sdf **must** declare the `libAircraftConfigPlugin.so` plugin. 
 This is a dummy plugin allowing us to set arbitrary configuration data.
@@ -173,9 +225,19 @@ minimum the aircraft must subscribe to motor commands and publish IMU messages
 
 *Message Type* EscSensor.proto
 
-## Agent Interface
 
-
-# Development Team and Contributions
+# Development Team 
 GymFC was developed and currently maintained by [Wil Koch](https://wfk.io).
 
+
+
+# Contributions
+
+For the Gazebo C++ plugins we are following the Gazebo style guide found
+[here](http://gazebosim.org/tutorials?tut=contrib_code&cat=development).
+For Python we are following the [Google Python style guide](https://google.github.io/styleguide/pyguide.html)
+There are many ways to contribute to the project, some ways are listed below.
+
+* Migratation of Iris model
+* Motor and Sensor model development 
+* Navigation and tasks
