@@ -1,16 +1,19 @@
 ![GymFC](https://github.com/wil3/gymfc/blob/master/images/gymfc-logo.png)
 
 GymFC is flight control tuning framework with a focus in attitude control. 
-Intially GymFC was first introduced in the [manuscript](http://wfk.io/docs/gymfc.pdf) "Reinforcement learning for UAV attitude control" in which the simulator was used to
+GymFC was first introduced in the [manuscript](http://wfk.io/docs/gymfc.pdf) "Reinforcement learning for UAV attitude control" in which a simulator was used to
 synthesize neuro-flight attitude controllers that exceeded the performance of a traditional PID controller. 
-Since the intial release of the project is has matured and become a modular
+Since the projects initial release it has matured to become a modular
 framework
-for tuning flight controllers system, not only for synthesizing neuro-flight
+for tuning flight control systems, not only for synthesizing neuro-flight
 controllers but also tuning traditional controllers as well. 
-Currently, GymFC is the primary method for developing controllers to be used in the worlds
+GymFC is the primary method for developing controllers to be used in the worlds
 first neural network supported
 flight control firmware [Neuroflight](https://wfk.io/neuroflight). 
-Please use the following BibTex entry to cite our work,
+Details of the project and its architecture are best described in Wil Koch's 
+[thesis](http://wfk.io/docs/WilliamKochThesisFINAL.pdf) "Flight Controller Synthesis Via Deep Reinforcement Learning".
+
+Please use the following BibTex entries to cite our work,
 ```
 @article{koch2019reinforcement,
   title={Reinforcement learning for UAV attitude control},
@@ -21,6 +24,14 @@ Please use the following BibTex entry to cite our work,
   pages={22},
   year={2019},
   publisher={ACM}
+}
+```
+```
+@article{koch2019flight,
+  title={Flight Controller Synthesis Via Deep Reinforcement Learning},
+  author={Koch, William},
+  journal={arXiv preprint arXiv:1909.06493},
+  year={2019}
 }
 ```
 
@@ -96,7 +107,7 @@ need to build the plugin manually by running the script
 
 # Getting Started 
 
-The simpilist environment can be created with,
+The simplest environment can be created with,
 
 ```python
 from gymfc.envs.fc_env import FlightControlEnv
@@ -105,7 +116,7 @@ class MyEnv(FlightControlEnv):
         super().__init__(aircraft_config, config_filepath=config, verbose=verbose)
 ```
 
-By inheritting FlightControlEnv you now have access to the `step_sim` and
+By inheriting FlightControlEnv you now have access to the `step_sim` and
 `reset` functions. If you want to create an OpenAI gym you also need to inherit
 this class e.g.,
 
@@ -140,7 +151,7 @@ to each .so file in the build directory.
 
 # Available User Provided Modules
 
-To increase flexability and provide a universal tuning framework, the user must
+To increase flexibility and provide a universal tuning framework, the user must
 provide four modules: A flight controller, a flight control tuner, environment
 interface, and digital twin. (Note: for neuro-flight controllers typically the
 flight controller and tuner are one in the same, e.g., OpenAI baselines) This will expand the flight control research that
@@ -244,6 +255,6 @@ For the Gazebo C++ plugins we are following the Gazebo style guide found
 For Python we are following the [Google Python style guide](https://google.github.io/styleguide/pyguide.html)
 There are many ways to contribute to the project, some ways are listed below.
 
-* Migratation of Iris model
+* Migration of Iris model
 * Motor and Sensor model development 
 * Navigation and tasks
