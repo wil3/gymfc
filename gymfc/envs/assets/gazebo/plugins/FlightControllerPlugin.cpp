@@ -192,7 +192,7 @@ void FlightControllerPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf
 
   this->cmdPub = this->nodeHandle->Advertise<cmd_msgs::msgs::MotorCommand>(this->cmdPubTopic);
   // Force pause because we drive the simulation steps
-  this->world->SetPaused(TRUE);
+  this->world->SetPaused(true);
 
 
   this->callbackLoopThread = boost::thread( boost::bind( &FlightControllerPlugin::LoopThread, this) );
@@ -365,6 +365,7 @@ physics::LinkPtr FlightControllerPlugin::FindLinkByName(physics::ModelPtr _model
 
 void FlightControllerPlugin::ParseDigitalTwinSDF()
 {
+   gzdbg << "Parsing Digital Twin SDF" << std::endl;
    // Load the root digital twin sdf file
   const std::string sdfPath(this->digitalTwinSDF);
 
@@ -386,10 +387,12 @@ void FlightControllerPlugin::ParseDigitalTwinSDF()
 
   sdf::ElementPtr pluginPtr = this->modelElement->GetElement("plugin");
 
-  //gzdbg << " Looking for plugin\n";
+  gzdbg << " Looking for Aircraft Config plugin\n";
   bool foundAircraftConfigPlugin = false;
   while(pluginPtr)
   {
+    gzdbg << pluginPtr << std::endl;
+    gzdbg << pluginPtr->GetAttribute("filename")->GetAsString() << std::endl;
     if (pluginPtr->GetAttribute("filename")->GetAsString().compare(kAircraftConfigFileName) == 0)
     {
       foundAircraftConfigPlugin = true;
@@ -397,12 +400,13 @@ void FlightControllerPlugin::ParseDigitalTwinSDF()
     }
     pluginPtr = pluginPtr->GetNextElement();
   }
-  //gzdbg << " Done Looking for plugin\n";
+
   if (!foundAircraftConfigPlugin)
   {
     gzerr << "Could not find required " << kAircraftConfigFileName << ". Aborting!" << std::endl;
   }
 
+  gzdbg << "Setting up CoT link"  << std::endl;
   const sdf::ElementPtr centerOfThrustElement = pluginPtr->GetElement("centerOfThrust");
   this->centerOfThrustReferenceLinkName = centerOfThrustElement->Get<std::string>("link");
   gzdbg << "CoT link=" << this->centerOfThrustReferenceLinkName << std::endl;
@@ -411,7 +415,6 @@ void FlightControllerPlugin::ParseDigitalTwinSDF()
 
   this->numActuators  = pluginPtr->GetElement("motorCount")->Get<int>();
   gzdbg << "Num motors " << this->numActuators << std::endl;
-
   sdf::ElementPtr sensorsSDF = pluginPtr->GetElement("sensors");
   if (!sensorsSDF)
   {
@@ -485,17 +488,17 @@ void FlightControllerPlugin::LoadDigitalTwin()
   gazebo::physics::LinkPtr centerOfThrustReferenceLink;
   centerOfThrustReferenceLink = FindLinkByName(model, this->centerOfThrustReferenceLinkName);
   if (!centerOfThrustReferenceLink){
-    gzerr << "Could not find the CoT link" << std::endl;
+    gzerr << "Could not find the CoT link " << this->centerOfThrustReferenceLinkName << std::endl;
     return;
   }
 
   // Create the ball joint to attach the aircraft too
+  gzdbg << "Loading Ball Joint" << std::endl;
   gazebo::physics::JointPtr joint;
   joint = this->world->Physics()->CreateJoint("ball", supportModel);
   joint->SetName("ball_joint");
   joint->Attach(supportModel->GetLink("pivot"), centerOfThrustReferenceLink);
   this->ballJoint = joint;
-
 
   if (this->world->Physics()->GetType().compare("dart") == 0)
   {
@@ -507,7 +510,7 @@ void FlightControllerPlugin::LoadDigitalTwin()
     gazebo::physics::DARTJointPtr dartJoint = boost::dynamic_pointer_cast<gazebo::physics::DARTJoint>(joint);
     gazebo::physics::DARTLinkPtr dartLink = boost::dynamic_pointer_cast<gazebo::physics::DARTLink>(centerOfThrustReferenceLink);
 
-    //Do all this just to get the dark joint
+    //Do all this just to get the dart joint
     std::shared_ptr<dart::dynamics::Joint::Properties> jointProperties = dartJoint->DARTProperties();
     std::pair<dart::dynamics::Joint*, dart::dynamics::BodyNode*> pair;
     dart::dynamics::BodyNode::AspectProperties properties("testbody");
@@ -516,9 +519,11 @@ void FlightControllerPlugin::LoadDigitalTwin()
         static_cast<const dart::dynamics::BallJoint::Properties&>(*jointProperties),
         properties
     );
+    gzdbg << "Calling SetDARTJoint" << std::endl;
     dart::dynamics::Joint* newJoint = pair.first;
     // XXX Cant initialize until SetDARTJoint called
     dartJoint->SetDARTJoint(newJoint);
+    gzdbg << "Succesffully called SetDARTJoint" << std::endl;
 
     // This is required to constrain the distance of the child link
     // For some reason the Load implementation is is missing this 
