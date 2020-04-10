@@ -88,19 +88,18 @@ Note, Ubuntu 16.04 LTS and 18.04 LTS are the only OS currently supported. Please
 [video](https://www.youtube.com/watch?v=d3NyFU0bVT0).  We have found these versions to work well together,
 
 1. Compile and install DART v6.9.2 from source [here](https://github.com/dartsim/dart/tree/v6.9.2) [(Insallation instructions)](http://dartsim.github.io/install_dart_on_ubuntu.html). Make sure you checkout the correct tag (tags/v6.9.2) when you clone the repo. Do not install the optional dependencies (they may work, just haven't been fully tested).
-2. Compile and install [Gazebo 10](http://gazebosim.org/tutorials?tut=install_from_source&cat=install). Once you clone the repo, remember to switch to the gazebo 10 release by running `hg up gazebo10`. You do not need the optional gazebo dependencies
-
-    NOTE: you may need to install lsb_release if you are installing within a docker container `apt install lsb-release`.
-
-    NOTE: if you don't have mercurial, install with `apt install mercurial`
+2. Compile and install [Gazebo 10](http://gazebosim.org/tutorials?tut=install_from_source&cat=install). Once you clone the repo, remember to switch to the gazebo 10 release by running `hg up gazebo10`. You do not need the optional gazebo dependencies.
+    * **After you run `cmake ../`, ensure that cmake found DART. If it did not, check your DART installation.**
+    * NOTE: you may need to install lsb_release if you are installing within a docker container `apt install lsb-release`.
+    * NOTE: if you don't have mercurial, install with `apt install mercurial`
 3. (Optional) It is suggested to set up a [virtual environment](https://docs.python.org/3/library/venv.html). From the project root, `python3 -m venv env`. This will create an environment named `env` which will be ignored by git. To enable the virtual environment, `source env/bin/activate` and to deactivate, `deactivate`.
 4. From root directory of this project, `pip3 install .` If you plan to work with the GymFC source code you will want to install it in development mode, `pip3 install -e .`
 5. You will also need to build the plugin manually by running the script `gymfc/envs/assets/gazebo/plugins/build_plugin.sh`.
-6. Confirm `SetupFile` in `gymfc.ini` is pointing to the correct location.
+6. Confirm `SetupFile` in `gymfc.ini` is pointing to the correct location. It should be pointing to the gazebo `setup.sh` script. This is usually located at `/usr/local/share/gazebo-10` or `/usr/share/gazebo-10`.
 
 
 # Setting up an aircraft model
-Once you have the package installed, you need to setup an aircraft to simulate in Gazebo. The current prebuilt models are [solo](https://github.com/wil3/gymfc-digitaltwin-solo) and [NF1](https://github.com/wil3/gymfc/tree/thesis-work/modules). Currently, solo is not functional and needs development help. NF1 is currently working in the simulator. Clone the desired model to a logical location on your computer. You will pass the path to the `.sdf` file to GymFC when using the library.
+Once you have the package installed, you need to setup an aircraft to simulate in Gazebo. The current prebuilt models are [solo](https://github.com/wil3/gymfc-digitaltwin-solo) and [NF1](https://github.com/wil3/gymfc/tree/thesis-work/modules) (NF1 is under the thesis-work branch of this repo). Currently, solo is not functional and needs development help. NF1 is currently working in the simulator. Clone the desired model to a logical location on your computer. You will pass the path to the `.sdf` file to GymFC when using the library.
 
 ### Directory Layout
 GymFC expects your model to have the following Gazebo style directory structure:
@@ -112,7 +111,7 @@ model_name/
     build/
 ```
 
-where the `plugin` directory contains the  source for your plugins and the
+where the `plugins` directory contains the  source for your plugins and the
 `build` directory will contain the built binary plugins. GymFC will, at
 runtime, add the build directory to the Gazebo plugin path so they can be found and loaded.
 
@@ -130,11 +129,14 @@ cd build
 cmake ../
 make
 ```
+
+NOTE: You may run into an error when running `cmake` with missing boost packages. If so, run `apt install libboost-all-dev`.
+
 4. Symlink the `.so` files in the build directory to the plugins build directory within the model directory:
 ```
-cp --symbolic-link *.so INSERT_MODEL_DIRECTORY/plugins/build/
+cp --symbolic-link INSERT_ABSOLUTE_REPO_DIRECTORY/build/*.so INSERT_ABSOLUTE_MODEL_DIRECTORY/plugins/build/
 ```
-5. Test that the model is configured correctly by running `tests/test_axis.py`
+5. Test that the model is configured correctly by running `tests/test_axis.py`. This python script takes the path to the aircraft `model.sdf` program as an argument. To debug errors, run with argument `--verbose`.
 
 
 # Getting Started
