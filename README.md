@@ -89,7 +89,9 @@ Note, Ubuntu 16.04 LTS and 18.04 LTS are the only OS currently supported. Please
 
 1. Compile and install DART v6.9.2 from source [here](https://github.com/dartsim/dart/tree/v6.9.2) [(Insallation instructions)](http://dartsim.github.io/install_dart_on_ubuntu.html). Make sure you checkout the correct tag (tags/v6.9.2) when you clone the repo. Do not install the optional dependencies (they may work, just haven't been fully tested).
 2. Compile and install [Gazebo 10](http://gazebosim.org/tutorials?tut=install_from_source&cat=install). Once you clone the repo, remember to switch to the gazebo 10 release by running `hg up gazebo10`. You do not need the optional gazebo dependencies
+
     NOTE: you may need to install lsb_release if you are installing within a docker container `apt install lsb-release`.
+
     NOTE: if you don't have mercurial, install with `apt install mercurial`
 3. (Optional) It is suggested to set up a [virtual environment](https://docs.python.org/3/library/venv.html). From the project root, `python3 -m venv env`. This will create an environment named `env` which will be ignored by git. To enable the virtual environment, `source env/bin/activate` and to deactivate, `deactivate`.
 4. From root directory of this project, `pip3 install .` If you plan to work with the GymFC source code you will want to install it in development mode, `pip3 install -e .`
