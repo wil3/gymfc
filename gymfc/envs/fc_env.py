@@ -560,6 +560,7 @@ aircraft_plugin_dir)
         """ Launch the Gazebo client """
         p = subprocess.Popen(["gzclient"], shell=False, env=self.env)
         self.process_ids.append(p.pid)
+        return p
 
 
 
