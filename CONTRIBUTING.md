@@ -3,13 +3,16 @@
 :+1::tada: Thank you for wanting to contribute to GymFC! :+1::tada: 
 
 Together we can build next
-generation flight control systems and there are many ways you can help. 
+generation flight control systems :rocket: :airplane: :helicopter: and there are many ways you can help! 
 
 ## Bug reporting
+Please following these steps when reporting a bug.
 
-## Documentation
-
-TODO 
+1) Search through the issues to ensure your bug has not already been submitted. 
+2) Open a new issue and describe at lengths how the bug can be reproduced.
+3) Provide details of your running environment, the commands you have executed
+and the full output. If necessary, provide any material or scripts needed to
+reproduce the bug. 
 
 ## Code Contributions
 Please following these steps in order to have your contribution considered by
@@ -37,13 +40,16 @@ issue the PR closes, for example `Closes: #45`. When the PR is merged, this keyw
 Please provide testing results that will affect your code changes. A number of
 testing scripts already exist in /test that may help. 
 
-## Model Development
+## User Module Development
 
 TODO 
 
 ## Coding Style
 
-We adhere to Google's style guide for both the Python and C++ code.
+We adhere to Google's style guide for Python code.
 The Python guide can be found
-[here](http://google.github.io/styleguide/pyguide.html) and the C++ guide ca
-n be found [here](https://google.github.io/styleguide/cppguide.html). 
+[here](http://google.github.io/styleguide/pyguide.html). 
+
+To stay consistent with Gazebo, the Gazebo C++ plugins follow the Gazebo style guide found
+[here](http://gazebosim.org/tutorials?tut=contrib_code&cat=development).
+

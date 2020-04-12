@@ -237,13 +237,4 @@ GymFC was developed and currently maintained by [Wil Koch](https://wfk.io).
 
 
 
-# Contributions
 
-For the Gazebo C++ plugins we are following the Gazebo style guide found
-[here](http://gazebosim.org/tutorials?tut=contrib_code&cat=development).
-For Python we are following the [Google Python style guide](https://google.github.io/styleguide/pyguide.html)
-There are many ways to contribute to the project, some ways are listed below.
-
-* Migratation of Iris model
-* Motor and Sensor model development 
-* Navigation and tasks
