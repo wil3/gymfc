@@ -51,6 +51,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     env = Sim(args.aircraftconfig, config_filepath=args.gymfc_config, max_sim_time=args.max_sim_time, verbose=args.verbose)
-              verbose=args.debug)
     env.render()
     step_sim(env, np.array(args.value), delay=args.delay)

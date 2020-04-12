@@ -111,9 +111,9 @@ All all incoming connections to xquartz:
 xhost +
 ```
 
-Run the image and to show the [solo digital twin](https://github.com/wil3/gymfc-digitaltwin-solo.git):
+Run the image and to test_step_sim.py the [solo digital twin](https://github.com/wil3/gymfc-digitaltwin-solo.git, branch add_config):
 ```
-docker run -ti -e DISPLAY=hostip:0 gymfc:demo
+docker run -ti -e DISPLAY=<hostip>:0 -v <path-to-gymfc-digitaltwin-solo>/models/solo/model.sdf:/gymfc/demo/models/solo/model.sdf gymfc "python3 /gymfc/tests/test_step_sim.py --gymfc-config /gymfc/gymfc.ini --verbose /gymfc/demo/models/solo/model.sdf  1 1 1 1"
 ```
 
 Replace _hostip_ by the external ip of your system to allow gymfc to connect to your XQuartz server.

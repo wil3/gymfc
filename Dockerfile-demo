@@ -74,7 +74,7 @@ ENV XVFB_WHD="1920x1080x24"\
     LP_NO_RAST="false" \
     PKG_CONFIG_PATH="/usr/local/pkgconfig" \
     PATH="/home/$USER/local/bin:${PATH}" \
-    LD_LIBRARY_PATH="/usr/local/lib:/home/$USER/local/lib:/usr/local/lib/python3.6/dist-packages/gymfc/envs/assets/gazebo/plugins/build/:/gymfc/examples/plugins/build/"
+    LD_LIBRARY_PATH="/usr/local/lib:/home/$USER/local/lib:/usr/local/lib/python3.6/dist-packages/gymfc/envs/assets/gazebo/plugins/build/"
 
 # Build gymfc
 ADD setup.py gymfc.ini gen_pb.sh LICENSE.txt /gymfc/
@@ -84,10 +84,8 @@ RUN pip3 install /gymfc
 ADD tests /gymfc/tests
 ADD images /gymfc/images
 
-# Download solo model and gymfc plugins, build plugins
-RUN git clone https://github.com/MichaelManz/gymfc-digitaltwin-solo.git /gymfc/demo \
-    && cd /gymfc/demo && git checkout add_config \
-    && git clone https://github.com/wil3/gymfc-aircraft-plugins.git /gymfc/demo/plugins \
+# Download gymfc plugins, build plugins
+RUN git clone https://github.com/wil3/gymfc-aircraft-plugins.git /gymfc/demo/plugins \
     && mkdir /gymfc/demo/plugins/build \
     && cd /gymfc/demo/plugins/build \
     && cmake .. \
@@ -101,5 +99,4 @@ RUN chown $USER:$USER -R /gymfc
 USER $USER
 WORKDIR /home/$USER
 
-CMD [ "python3", "/gymfc/tests/test_step_sim.py", "/gymfc/demo/models/solo/model.sdf", \
-      "--gymfc-config", "/gymfc/gymfc.ini", "--debug", "True", "1", "1", "1", "1" ]
+ENTRYPOINT ["/bin/bash", "-c"]
