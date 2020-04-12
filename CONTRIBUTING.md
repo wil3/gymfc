@@ -6,7 +6,7 @@ Together we can build next
 generation flight control systems :rocket: :airplane: :helicopter: and there are many ways you can help! 
 
 ## Bug reporting
-Please following these steps when reporting a bug.
+Please follow these steps when reporting a bug.
 
 1) Search through the issues to ensure your bug has not already been submitted. 
 2) Open a new issue and describe at lengths how the bug can be reproduced.
