@@ -111,7 +111,7 @@ Build the docker image
 docker build  -f Dockerfile-demo . -t gymfc:demo
 ```
 This will take a while as it compiles mesa drivers, gazebo and dart. It is recommended to give Docker a large part of the host's resources.
-All all incoming connections to xquartz:
+All incoming connections will forward to xquartz:
 
 ```
 xhost +
@@ -125,7 +125,7 @@ gymfc:demo \
 "python3 /gymfc/tests/test_step_sim.py --gymfc-config /gymfc/gymfc.ini --verbose /gymfc/demo/models/solo/model.sdf  1 1 1 1"
 ```
 
-Replace _hostip_ by the external ip of your system to allow gymfc to connect to your XQuartz server and _path-to-gymfc-digitaltwin-solo_ to where you cloned this repo.
+Replace _<hostip>_ by the external ip of your system to allow gymfc to connect to your XQuartz server and _<path-to-gymfc-digitaltwin-solo>_ to where you cloned the Solo repo.
 Take special note that the test_step_sim.py parameters are using the containers
 path, not the host's path.
 
