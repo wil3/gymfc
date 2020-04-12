@@ -107,18 +107,18 @@ For Ubuntu, install [Docker for Ubuntu](https://docs.docker.com/engine/install/u
 ### Build and test 
 Build the docker image
 
-```
+```bash
 docker build  -f Dockerfile-demo . -t gymfc:demo
 ```
 This will take a while as it compiles mesa drivers, gazebo and dart. It is recommended to give Docker a large part of the host's resources.
 All incoming connections will forward to xquartz:
 
-```
+```bash
 xhost +
 ```
 
 Example usage, run the image and test test_step_sim.py using the [Solo digital twin](https://github.com/wil3/gymfc-digitaltwin-solo.git),
-```
+```bash
 docker run -ti -e DISPLAY=<hostip>:0 \
 -v <path-to-gymfc-digitaltwin-solo>/models/solo/model.sdf:/gymfc/demo/models/solo/model.sdf \
 gymfc:demo \
