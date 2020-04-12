@@ -10,6 +10,9 @@ RUN apt-get update \
     && apt-get install -y libx11-xcb-dev zlib1g-dev xorg-dev xserver-xorg-dev
 
 # compile mesa to be able to use DRI with docker
+# enable graphic rendering in a docker container and allow it to forward it to a XHost outside the container.
+# The pre-installed mesa drives do not support DRI but Gazebo needs them. Hence we need to install new drivers.
+# This takes a while, make that the ADD/COPY commands come later so this layer can be cached by docker build.
 RUN mkdir -p /var/tmp/build \
     && cd /var/tmp/build \
     && apt-get install -y wget \
