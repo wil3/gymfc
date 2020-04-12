@@ -93,9 +93,18 @@ need to build the plugin manually by running the script
 `gymfc/envs/assets/gazebo/plugins/build_plugin.sh`.
 3. Confirm `SetupFile` in `gymfc.ini` is pointing to the correct location.
 
-## Installation of Docker demo (tested on MacOS 10.14.3)
+## Installation using Docker
 This repository includes an experimental docker build that demos the usage of GymFC. 
-Install [Docker for Mac](https://docs.docker.com/docker-for-mac/install/) and [XQuartz](https://www.xquartz.org/) on your system.
+It has been tested on MacOS 10.14.3 and Ubuntu 18.04, however the Gazebo client
+has not been verified to work for Ubuntu. This docker image can help ensure you
+are running a supported environment for GymFC.
+
+### Install dependencies 
+
+For Mac, install [Docker for Mac](https://docs.docker.com/docker-for-mac/install/) and [XQuartz](https://www.xquartz.org/) on your system.
+For Ubuntu, install [Docker for Ubuntu](https://docs.docker.com/engine/install/ubuntu/).
+
+### Build and test 
 Build the docker image
 
 ```
@@ -108,12 +117,17 @@ All all incoming connections to xquartz:
 xhost +
 ```
 
-Run the image and to test_step_sim.py the [solo digital twin](https://github.com/wil3/gymfc-digitaltwin-solo.git, branch add_config):
+Example usage, run the image and test test_step_sim.py using the [Solo digital twin](https://github.com/wil3/gymfc-digitaltwin-solo.git),
 ```
-docker run -ti -e DISPLAY=<hostip>:0 -v <path-to-gymfc-digitaltwin-solo>/models/solo/model.sdf:/gymfc/demo/models/solo/model.sdf gymfc:demo "python3 /gymfc/tests/test_step_sim.py --gymfc-config /gymfc/gymfc.ini --verbose /gymfc/demo/models/solo/model.sdf  1 1 1 1"
+docker run -ti -e DISPLAY=<hostip>:0 \
+-v <path-to-gymfc-digitaltwin-solo>/models/solo/model.sdf:/gymfc/demo/models/solo/model.sdf \
+gymfc:demo \
+"python3 /gymfc/tests/test_step_sim.py --gymfc-config /gymfc/gymfc.ini --verbose /gymfc/demo/models/solo/model.sdf  1 1 1 1"
 ```
 
-Replace _hostip_ by the external ip of your system to allow gymfc to connect to your XQuartz server.
+Replace _hostip_ by the external ip of your system to allow gymfc to connect to your XQuartz server and _path-to-gymfc-digitaltwin-solo_ to where you cloned this repo.
+Take special note that the test_step_sim.py parameters are using the containers
+path, not the host's path.
 
 
 # Getting Started 
