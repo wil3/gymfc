@@ -15,25 +15,23 @@ and the full output. If necessary, provide any material or scripts needed to
 reproduce the bug. 
 
 ## Code Contributions
-Please following these steps in order to have your contribution considered by
+Please follow these steps in order to have your contribution considered by
 the maintainers.
 
 1) Search through the issues to verify your code changes have not already been
 discussed. 
 2) Open an issue on Github outlining the changes you would like to make. Scope
-each issue to a single change. If there are multiple changes you'd like to
-make, open an issue for each one. The issue serves as the location for
-documenting the change to be made. There will exist a one-to-one mapping between
-an issue and a pull request. Once the change is approved continue to the
+each issue to a single change (i.e., improvement to the documentation, a bug fix,
+ a new feature, etc.). If there are multiple changes you'd like to
+propose,  please open an new issue for each one. The issue serves as the location for discussing and
+documenting the change to be made.  Once the change is approved continue to the
 next step.
 2) If you haven't already done so, fork the gymfc repository.
 2) Create a branch named `i[issue number]-brief-description` where `[issue
 number]` is the issue number previously created and `brief-description` is a
 brief description of the change you are making. For example `i45-contribution`.
 
-3) Make changes on your new branch. Follow the projects coding style and
- test you code changes. Double check your commits to ensure
-unnecessary commits are not being to keep the commit history clean. 
+3) Make changes on your new branch, follow the style guide below. Test you code changes. Double check your commits to ensure unnecessary commits are not being made to keep the commit history clean. 
 
 4) When you are happy with the code changes open up a pull request. Specify the
 issue the PR closes, for example `Closes: #45`. When the PR is merged, this keyword will automatically close the corresponding issue. 
@@ -44,7 +42,16 @@ testing scripts already exist in /test that may help.
 
 TODO 
 
-## Coding Style
+## Style Guides 
+
+### Git messages
+
+* Use the present tense ("Add feature" not "Added feature")
+* Use the imperative mood ("Move cursor to..." not "Moves cursor to...")
+* Limit the first line to 72 characters or less
+* Reference issues and pull requests liberally after the first line
+
+### Code
 
 We adhere to Google's style guide for Python code.
 The Python guide can be found
