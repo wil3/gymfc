@@ -94,10 +94,11 @@ need to build the plugin manually by running the script
 3. Confirm `SetupFile` in `gymfc.ini` is pointing to the correct location.
 
 ## Installation of Docker demo (tested on MacOS 10.14.3)
-This repository includes an experimental docker build that demos the usage of GymFC. 
+<p>This repository includes an experimental docker build that demos the usage of GymFC. 
+</p>
 <p>
 Install [Docker for Mac](https://docs.docker.com/docker-for-mac/install/) and [XQuartz](https://www.xquartz.org/) on your system.
-<p>
+</p>
 Build the docker image
 
 ```
@@ -106,14 +107,14 @@ docker build  -f Dockerfile-demo . -t gymfc:demo
 This will take a while as it compiles mesa drivers, gazebo and dart. It is recommended to give Docker a large part of the host's resources.
 <p>
 All all incoming connections to xquartz:
-
+</p>
 ```
 xhost +
 ```
 
 Run the image and to test_step_sim.py the [solo digital twin](https://github.com/wil3/gymfc-digitaltwin-solo.git, branch add_config):
 ```
-docker run -ti -e DISPLAY=<hostip>:0 -v <path-to-gymfc-digitaltwin-solo>/models/solo/model.sdf:/gymfc/demo/models/solo/model.sdf gymfc "python3 /gymfc/tests/test_step_sim.py --gymfc-config /gymfc/gymfc.ini --verbose /gymfc/demo/models/solo/model.sdf  1 1 1 1"
+docker run -ti -e DISPLAY=<hostip>:0 -v <path-to-gymfc-digitaltwin-solo>/models/solo/model.sdf:/gymfc/demo/models/solo/model.sdf gymfc:demo "python3 /gymfc/tests/test_step_sim.py --gymfc-config /gymfc/gymfc.ini --verbose /gymfc/demo/models/solo/model.sdf  1 1 1 1"
 ```
 
 Replace _hostip_ by the external ip of your system to allow gymfc to connect to your XQuartz server.
