@@ -192,7 +192,7 @@ void FlightControllerPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf
 
   this->cmdPub = this->nodeHandle->Advertise<cmd_msgs::msgs::MotorCommand>(this->cmdPubTopic);
   // Force pause because we drive the simulation steps
-  this->world->SetPaused(TRUE);
+  this->world->SetPaused(true);
 
 
   this->callbackLoopThread = boost::thread( boost::bind( &FlightControllerPlugin::LoopThread, this) );
