@@ -1,5 +1,9 @@
 sudo: required
 language: generic
+matrix:
+  include:
+  - name: "Bionic beaver"
+    dist: bionic
 before-install:
   - sudo apt-get update
   # Install dart from source
