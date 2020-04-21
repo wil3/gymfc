@@ -3,6 +3,7 @@ language: generic
 before-install:
   - sudo apt-get update
   # Install dart from source
+  - sudo apt-get install -y libeigen3-dev libassimp-dev libccd-dev libfcl-dev libboost-regex-dev libboost-system-dev
   - git clone https://github.com/dartsim/dart.git /tmp/dart
   - cd /tmp/dart && git checkout v6.7.0
   - mkdir build && cd build
