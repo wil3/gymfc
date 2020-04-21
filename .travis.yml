@@ -4,12 +4,14 @@ before-install:
   - sudo apt-get update
   # Install dart from source
   - sudo apt-get install -y libeigen3-dev libassimp-dev libccd-dev libfcl-dev libboost-regex-dev libboost-system-dev
+  # Octomap is specified as an optional dependency but building is not linking without it, http://dartsim.github.io/install_dart_on_ubuntu.html
+  - sudo apt-get install -y liboctomap-dev
   - git clone https://github.com/dartsim/dart.git /tmp/dart
   - cd /tmp/dart && git checkout v6.7.0
   - mkdir build && cd build
   - cmake ..
   - make -j4
-  - make install 
+  - sudo make install 
   # Install boost dependency
   - sudo apt-get install -y libboost-all-dev
   # Install Gazebo from source http://gazebosim.org/tutorials?tut=install_from_source&cat=install
