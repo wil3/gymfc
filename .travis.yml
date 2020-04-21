@@ -16,7 +16,9 @@ before-install:
   - sudo apt-get install -y libboost-all-dev
   # Install Gazebo from source http://gazebosim.org/tutorials?tut=install_from_source&cat=install
   - sudo sh -c 'echo "deb http://packages.osrfoundation.org/gazebo/ubuntu-stable `lsb_release -cs` main" > /etc/apt/sources.list.d/gazebo-stable.list'
-  - wget http://packages.osrfoundation.org/gazebo.key -O - | apt-key add - && apt-get update
+  - wget http://packages.osrfoundation.org/gazebo.key -O /tmp/gazebo.key 
+  - apt-key add /tmp/gazebo.key 
+  - sudo apt-get update
   - wget https://bitbucket.org/osrf/release-tools/raw/default/jenkins-scripts/lib/dependencies_archive.sh -O /tmp/dependencies.sh
   - /bin/bash -c "GAZEBO_MAJOR_VERSION=10 ROS_DISTRO=dummy source /tmp/dependencies.sh && echo \${BASE_DEPENDENCIES} \${GAZEBO_BASE_DEPENDENCIES} \${DART_DEPENDENCIES} | tr -d '\\' | xargs apt-get -y install"
   - hg clone https://bitbucket.org/osrf/gazebo /tmp/gazebo
