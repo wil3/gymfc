@@ -20,14 +20,14 @@ before-install:
   - sudo apt-key add /tmp/gazebo.key 
   - sudo apt-get update
   - wget https://bitbucket.org/osrf/release-tools/raw/default/jenkins-scripts/lib/dependencies_archive.sh -O /tmp/dependencies.sh
-  - /bin/bash -c "GAZEBO_MAJOR_VERSION=10 ROS_DISTRO=dummy source /tmp/dependencies.sh && echo \${BASE_DEPENDENCIES} \${GAZEBO_BASE_DEPENDENCIES} \${DART_DEPENDENCIES} | tr -d '\\' | xargs apt-get -y install"
+  - /bin/bash -c "GAZEBO_MAJOR_VERSION=10 ROS_DISTRO=dummy source /tmp/dependencies.sh && echo \${BASE_DEPENDENCIES} \${GAZEBO_BASE_DEPENDENCIES} \${DART_DEPENDENCIES} | tr -d '\\' | xargs sudo apt-get -y install"
   - hg clone https://bitbucket.org/osrf/gazebo /tmp/gazebo
   - cd /tmp/gazebo
   - hg up gazebo10_10.1.0
   - mkdir build && cd build
   - cmake -DCMAKE_INSTALL_PREFIX=/home/$USER/local ../
   - make -j4
-  - make install
+  - sudo make install
 
 install:
   - pip install .
