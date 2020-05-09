@@ -109,6 +109,42 @@ need to build the plugin manually by running the script
 `gymfc/envs/assets/gazebo/plugins/build_plugin.sh`.
 3. Confirm `SetupFile` in `gymfc.ini` is pointing to the correct location.
 
+## Installation using Docker
+This repository includes an experimental docker build that demos the usage of GymFC. 
+It has been tested on MacOS 10.14.3 and Ubuntu 18.04, however the Gazebo client
+has not been verified to work for Ubuntu. This docker image can help ensure you
+are running a supported environment for GymFC.
+
+### Install dependencies 
+
+For Mac, install [Docker for Mac](https://docs.docker.com/docker-for-mac/install/) and [XQuartz](https://www.xquartz.org/) on your system.
+For Ubuntu, install [Docker for Ubuntu](https://docs.docker.com/engine/install/ubuntu/).
+
+### Build and test 
+Build the docker image
+
+```bash
+docker build  -f Dockerfile-demo . -t gymfc:demo
+```
+This will take a while as it compiles mesa drivers, gazebo and dart. It is recommended to give Docker a large part of the host's resources.
+All incoming connections will forward to xquartz:
+
+```bash
+xhost +
+```
+
+Example usage, run the image and test test_step_sim.py using the [Solo digital twin](https://github.com/wil3/gymfc-digitaltwin-solo.git),
+```bash
+docker run -ti -e DISPLAY=<hostip>:0 \
+-v <path-to-gymfc-digitaltwin-solo>/models/solo/model.sdf:/gymfc/demo/models/solo/model.sdf \
+gymfc:demo \
+"python3 /gymfc/tests/test_step_sim.py --gymfc-config /gymfc/gymfc.ini --verbose /gymfc/demo/models/solo/model.sdf  1 1 1 1"
+```
+
+Replace _<hostip>_ by the external ip of your system to allow gymfc to connect to your XQuartz server and _<path-to-gymfc-digitaltwin-solo>_ to where you cloned the Solo repo.
+Take special note that the test_step_sim.py parameters are using the containers
+path, not the host's path.
+
 
 # Getting Started 
 
@@ -257,14 +293,7 @@ The OpenAI environment and digital twin models used in Wil Koch's thesis can be 
 GymFC was developed and currently maintained by [Wil Koch](https://wfk.io).
 
 
-
 # Contributions
+Please see [CONTRIBUTING.md](https://github.com/wil3/gymfc/blob/master/CONTRIBUTING.md) before opening an issue or pull request. 
 
-For the Gazebo C++ plugins we are following the Gazebo style guide found
-[here](http://gazebosim.org/tutorials?tut=contrib_code&cat=development).
-For Python we are following the [Google Python style guide](https://google.github.io/styleguide/pyguide.html)
-There are many ways to contribute to the project, some ways are listed below.
 
-* Migration of Iris model
-* Motor and Sensor model development 
-* Navigation and tasks

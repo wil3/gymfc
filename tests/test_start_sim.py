@@ -1,8 +1,6 @@
 import argparse
-import math
-import os
-import time
-from gymfc.envs.fc_env import FlightControlEnv 
+
+from gymfc.envs.fc_env import FlightControlEnv
 
 
 class Sim(FlightControlEnv):

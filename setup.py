@@ -47,8 +47,8 @@ setup(name='gymfc',
       license='MIT',
       packages=find_packages(),
       package_data={'gymfc': [
-          "envs/assets/gazebo/models/quadcopter_attitude_control/*.config",
-          "envs/assets/gazebo/models/quadcopter_attitude_control/*.sdf",
+          "envs/assets/gazebo/models/attitude_control_training_rig/*.config",
+          "envs/assets/gazebo/models/attitude_control_training_rig/*.sdf",
           "envs/assets/gazebo/worlds/*.world",
           "envs/assets/gazebo/plugins/build/*.so"
       ]},
