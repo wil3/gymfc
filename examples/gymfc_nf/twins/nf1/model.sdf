@@ -1,0 +1,867 @@
+<?xml version='1.0'?>
+<sdf version='1.6'>
+
+  <model name='nf1'>
+    <!-- a plugin with this filename is required -->
+    <plugin name="config" filename="libAircraftConfigPlugin.so">
+        <motorCount>4</motorCount>
+        <!-- Where is the center of thrust in relation to this specified link -->
+        <centerOfThrust> 
+            <link>battery</link>
+            <offset>0 0 0.058</offset>
+        </centerOfThrust>
+      <sensors>
+          <sensor type="imu">
+              <enable_angular_velocity>true</enable_angular_velocity>
+              <enable_linear_acceleration>true</enable_linear_acceleration>
+              <enable_orientation>true</enable_orientation>
+          </sensor>
+          <sensor type="esc">
+                <enable_angular_velocity>true</enable_angular_velocity>
+                <enable_temperature>false</enable_temperature>
+                <enable_current>false</enable_current>
+          </sensor>
+		  <!--
+          <sensor type="battery">
+              <enable_voltage>true</enable_voltage>
+              <enable_current>true</enable_current>
+          </sensor>
+            -->
+      </sensors>
+    </plugin>
+
+    <enable_wind>true</enable_wind>
+    <pose>0 0 0 0 0 0</pose>
+
+    <link name='frame'>
+        <pose>0 0 0.037 0 0 1.5708</pose>
+        <inertial>
+            <pose>0.000000 0.000000 0.007083</pose>
+            <mass>0.066</mass>
+            <inertia>
+              <ixx>0.0001678344831307261</ixx>
+              <ixy>0</ixy>
+              <ixz>0</ixz>
+              <iyy>0.00011834309223915557</iyy>
+              <iyz>0</iyz>
+              <izz>0.0002725710742660843</izz>
+            </inertia>
+        </inertial>
+        <!--
+        <collision name='frame_collision'>
+            <pose>0 0 0.0 0 0 0</pose>
+            <geometry>
+              <box>
+                <size>0.001 0.001 0.001</size>
+              </box>
+            </geometry>
+        </collision>
+        -->
+        <visual name='frame_visual'>
+            <geometry>
+              <mesh>
+                <scale>0.001 0.001 0.001</scale>
+                <uri>model://nf1/meshes/frame_floss2.dae</uri>
+              </mesh>
+            </geometry>
+            <material>
+              <script>
+                <name>Gazebo/Grey</name>
+              </script>
+            </material>
+        </visual>
+        <gravity>1</gravity>
+      <velocity_decay/>
+      <self_collide>0</self_collide>
+    </link>
+
+    <link name='battery'>
+        <pose>0 0 0 0 0 1.5708</pose>
+      <inertial>
+        <pose>0.000000 0.000000 0.018500</pose>
+        <mass>0.194</mass>
+        <inertia>
+          <ixx>0.00010828433774545583</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>4.193633637735583e-05</iyy>
+          <iyz>0</iyz>
+          <izz>0.00010595633504345831</izz>
+		</inertia>
+      </inertial>
+      <!--
+      <collision name='battery_collision'>
+        <pose>0 0 0.0185 0 -0 0</pose>
+        <geometry>
+            <box>                 
+                <size>0.035 0.073 0.037</size>
+            </box>
+        </geometry>
+      </collision>
+        -->
+      <visual name='battery_visual'>
+        <pose>0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <scale>0.001 0.001 0.001</scale>
+            <uri>model://nf1/meshes/battery_tattu_rline_1550mah.dae</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/Yellow</name>
+            <uri>__default__</uri>
+          </script>
+        </material>
+      </visual>
+      <gravity>1</gravity>
+      <velocity_decay/>
+      <self_collide>0</self_collide>
+    </link>
+    <joint name="battery_joint" type="fixed">
+        <child>battery</child>
+        <parent>frame</parent>
+    </joint>
+
+    
+    <link name="motor_1">
+
+        <pose>-0.0805 -0.07 0.042 0 -0 0</pose>
+      <inertial>
+        <pose>0.000000 -0.000000 0.008000</pose>
+        <mass>0.02</mass>
+        <inertia>
+          <ixx>1.3131086850610764e-06</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1.3131086827940408e-06</iyy>
+          <iyz>0</iyz>
+          <izz>1.7728840665083659e-06</izz>
+        </inertia>
+      </inertial>
+      <!--
+      <collision name="motor_1_collision">
+        <pose>0 0 0 0 -0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.005</length>
+            <radius>0.0133</radius>
+          </cylinder>
+        </geometry>
+      </collision>
+-->
+      <visual name="motor_1_visual">
+        <pose>0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <scale>0.001 0.001 0.001</scale>
+            <uri>model://nf1/meshes/motor_hyperlite_2204_2522.dae</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/Black</name>
+            <uri>__default__</uri>
+          </script>
+        </material>
+      </visual>
+      <gravity>1</gravity>
+      <velocity_decay/>
+      <self_collide>0</self_collide>
+    </link>
+
+    <joint name="motor_1_joint" type="fixed">
+        
+        <pose>0 0 0 0 -0 0</pose>
+        <child>motor_1</child>
+        <parent>frame</parent>
+    </joint>
+
+    
+    <link name="motor_2">
+        <pose>0.0805 -0.07 0.042 0 -0 0</pose>
+      <inertial>
+        <pose>0.000000 -0.000000 0.008000</pose>
+        <mass>0.02</mass>
+        <inertia>
+          <ixx>1.3131086850610764e-06</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1.3131086827940408e-06</iyy>
+          <iyz>0</iyz>
+          <izz>1.7728840665083659e-06</izz>
+        </inertia>
+      </inertial>
+      <!--
+      <collision name="motor_2_collision">
+        <pose>0 0 0 0 -0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.005</length>
+            <radius>0.0133</radius>
+          </cylinder>
+        </geometry>
+      </collision>
+-->
+      <visual name="motor_2_visual">
+        <pose>0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <scale>0.001 0.001 0.001</scale>
+            <uri>model://nf1/meshes/motor_hyperlite_2204_2522.dae</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/Black</name>
+            <uri>__default__</uri>
+          </script>
+        </material>
+      </visual>
+      <gravity>1</gravity>
+      <velocity_decay/>
+      <self_collide>0</self_collide>
+    </link>
+
+    <joint name="motor_2_joint" type="fixed">
+        
+        <pose>0 0 0 0 -0 0</pose>
+        <child>motor_2</child>
+        <parent>frame</parent>
+    </joint>
+
+    
+    <link name="motor_3">
+        <pose>-0.0805 0.07 0.042 0 -0 0</pose>
+      <inertial>
+        <pose>0.000000 -0.000000 0.008000</pose>
+        <mass>0.02</mass>
+        <inertia>
+          <ixx>1.3131086850610764e-06</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1.3131086827940408e-06</iyy>
+          <iyz>0</iyz>
+          <izz>1.7728840665083659e-06</izz>
+        </inertia>
+      </inertial>
+      <!--
+      <collision name="motor_3_collision">
+        <pose>0 0 0 0 -0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.005</length>
+            <radius>0.0133</radius>
+          </cylinder>
+        </geometry>
+      </collision>
+-->
+      <visual name="motor_3_visual">
+        <pose>0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <scale>0.001 0.001 0.001</scale>
+            <uri>model://nf1/meshes/motor_hyperlite_2204_2522.dae</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/Black</name>
+            <uri>__default__</uri>
+          </script>
+        </material>
+      </visual>
+      <gravity>1</gravity>
+      <velocity_decay/>
+      <self_collide>0</self_collide>
+    </link>
+    <joint name="motor_3_joint" type="fixed">
+        <pose>0 0 0 0 -0 0</pose>
+        <child>motor_3</child>
+        <parent>frame</parent>
+    </joint>
+
+    
+    <link name="motor_4">
+        <pose>0.0805 0.07  0.042 0 -0 0</pose>
+      <inertial>
+        <pose>0.000000 -0.000000 0.008000</pose>
+        <mass>0.02</mass>
+        <inertia>
+          <ixx>1.3131086850610764e-06</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1.3131086827940408e-06</iyy>
+          <iyz>0</iyz>
+          <izz>1.7728840665083659e-06</izz>
+        </inertia>
+      </inertial>
+      <!--
+      <collision name="motor_4_collision">
+        <pose>0 0 0 0 -0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.005</length>
+            <radius>0.0133</radius>
+          </cylinder>
+        </geometry>
+      </collision>
+-->
+      <visual name="motor_4_visual">
+        <pose>0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <scale>0.001 0.001 0.001</scale>
+            <uri>model://nf1/meshes/motor_hyperlite_2204_2522.dae</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/Black</name>
+            <uri>__default__</uri>
+          </script>
+        </material>
+      </visual>
+      <gravity>1</gravity>
+      <velocity_decay/>
+      <self_collide>0</self_collide>
+    </link>
+    <joint name="motor_4_joint" type="fixed">
+        
+        <pose>0 0 0 0 -0 0</pose>
+        <child>motor_4</child>
+        <parent>frame</parent>
+    </joint>
+
+    
+
+    
+    <link name="prop_1">
+    <pose>-0.0805 -0.07  0.058 0 -0 0</pose>
+      <inertial>
+        <pose>-0.000004 0.000009 0.002041</pose>
+        <mass>0.00511</mass>
+        <inertia>
+          <ixx>2.157959928944065e-06</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>2.1559551412902913e-06</iyy>
+          <iyz>0</iyz>
+          <izz>4.242412526026635e-06</izz>
+        </inertia>
+      </inertial>
+      <!--
+      <collision name="prop_1_collision">
+        <pose>0 0 0 1.57 -0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.005</length>
+            <radius>0.0635</radius>
+          </cylinder>
+        </geometry>
+        <surface>
+          <contact>
+            <ode/>
+          </contact>
+          <friction>
+            <ode/>
+          </friction>
+        </surface>
+      </collision>
+-->
+      <visual name="prop_1_visual">
+        <pose>0 0 0 1.5708 -0 3.1415</pose>
+        <geometry>
+          <mesh>
+            <scale>0.001 0.001 0.001</scale>
+            <uri>model://nf1/meshes/prop_gemfan_5152R_cw.dae</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/Red</name>
+            <uri>__default__</uri>
+          </script>
+        </material>
+      </visual>
+      <gravity>1</gravity>
+      <velocity_decay/>
+      <self_collide>0</self_collide>
+    </link>
+    <joint name="prop_1_joint" type='revolute'>
+      <child>prop_1</child>
+
+      <parent>frame</parent>
+      <!--<parent>motor_1</parent>-->
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <lower>-1e+16</lower>
+          <upper>1e+16</upper>
+        </limit>
+        <dynamics>
+          <spring_reference>0</spring_reference>
+          <spring_stiffness>0</spring_stiffness>
+        </dynamics>
+        <use_parent_model_frame>1</use_parent_model_frame>
+      </axis>
+    </joint>
+    <plugin name="prop_1_motor_model" filename='libgazebo_motor_model.so'>
+      <robotNamespace></robotNamespace>
+      <jointName>prop_1_joint</jointName>
+      <linkName>prop_1</linkName>
+      <turningDirection>cw</turningDirection>
+      <timeConstantUp>0.187</timeConstantUp>
+      <timeConstantDown>0.1</timeConstantDown>
+      <maxRotVelocity>2622</maxRotVelocity>
+      <motorConstant>9.375e-7</motorConstant>
+      <momentConstant>0.0086</momentConstant>
+      <motorNumber>0</motorNumber>
+      <rotorDragCoefficient>8e-5</rotorDragCoefficient>
+      <rollingMomentCoefficient>1e-06</rollingMomentCoefficient>
+      <rotorVelocitySlowdownSim>1</rotorVelocitySlowdownSim>
+      <rotorVelocityUnits>rpm</rotorVelocityUnits>
+      <escTransferFunction>
+          <term1Coefficient>-14229.32</term1Coefficient>
+          <term2Coefficient>39125.59</term2Coefficient>
+          <term3Coefficient>86.67</term3Coefficient>
+      </escTransferFunction>
+      <joint_control_pid>
+          <p>0.0001</p>
+          <i>0</i>
+          <d>0</d>
+          <iMin>0</iMin>
+          <iMax>0</iMax>
+          <cmdMin>-0.05</cmdMin>
+          <cmdMax>0.1</cmdMax>
+      </joint_control_pid>
+    </plugin>
+    
+    <link name="prop_2">
+    <pose>0.0805 -0.07 0.058 0 -0 0</pose>
+      <inertial>
+        <pose>-0.000004 0.000009 0.002041</pose>
+        <mass>0.00511</mass>
+        <inertia>
+          <ixx>2.157959928944065e-06</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>2.1559551412902913e-06</iyy>
+          <iyz>0</iyz>
+          <izz>4.242412526026635e-06</izz>
+        </inertia>
+      </inertial>
+      <!--
+      <collision name="prop_2_collision">
+        <pose>0 0 0 1.57 -0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.005</length>
+            <radius>0.0635</radius>
+          </cylinder>
+        </geometry>
+        <surface>
+          <contact>
+            <ode/>
+          </contact>
+          <friction>
+            <ode/>
+          </friction>
+        </surface>
+      </collision>
+-->
+      <visual name="prop_2_visual">
+        <pose>0 0 0 1.57080 -0 3.1415</pose>
+        <geometry>
+          <mesh>
+            <scale>0.001 0.001 0.001</scale>
+            <uri>model://nf1/meshes/prop_gemfan_5152R_ccw.dae</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/Red</name>
+            <uri>__default__</uri>
+          </script>
+        </material>
+      </visual>
+      <gravity>1</gravity>
+      <velocity_decay/>
+      <self_collide>0</self_collide>
+    </link>
+    <joint name="prop_2_joint" type='revolute'>
+      <child>prop_2</child>
+
+      <parent>frame</parent>
+      <!--<parent>motor_2</parent>-->
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <lower>-1e+16</lower>
+          <upper>1e+16</upper>
+        </limit>
+        <dynamics>
+          <spring_reference>0</spring_reference>
+          <spring_stiffness>0</spring_stiffness>
+        </dynamics>
+        <use_parent_model_frame>1</use_parent_model_frame>
+      </axis>
+    </joint>
+    <plugin name="prop_2_motor_model" filename='libgazebo_motor_model.so'>
+      <robotNamespace></robotNamespace>
+      <jointName>prop_2_joint</jointName>
+      <linkName>prop_2</linkName>
+      <turningDirection>ccw</turningDirection>
+      <timeConstantUp>0.187</timeConstantUp>
+      <timeConstantDown>0.1</timeConstantDown>
+      <maxRotVelocity>2622</maxRotVelocity>
+      <motorConstant>9.375e-7</motorConstant>
+      <momentConstant>0.0086</momentConstant>
+      <motorNumber>1</motorNumber>
+      <rotorDragCoefficient>8e-5</rotorDragCoefficient>
+      <rollingMomentCoefficient>1e-06</rollingMomentCoefficient>
+      <rotorVelocitySlowdownSim>1</rotorVelocitySlowdownSim>
+      <rotorVelocityUnits>rpm</rotorVelocityUnits>
+      <escTransferFunction>
+          <term1Coefficient>-14229.32</term1Coefficient>
+          <term2Coefficient>39125.59</term2Coefficient>
+          <term3Coefficient>86.67</term3Coefficient>
+      </escTransferFunction>
+      <joint_control_pid>
+          <p>0.0001</p>
+          <i>0</i>
+          <d>0</d>
+          <iMin>0</iMin>
+          <iMax>0</iMax>
+          <cmdMin>-0.1</cmdMin>
+          <cmdMax>0.05</cmdMax>
+      </joint_control_pid>
+    </plugin>
+    
+    <link name="prop_3">
+    <pose>-0.0805 0.07  0.058 0 -0 0</pose>
+      <inertial>
+        <pose>-0.000004 0.000009 0.002041</pose>
+        <mass>0.00511</mass>
+        <inertia>
+          <ixx>2.157959928944065e-06</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>2.1559551412902913e-06</iyy>
+          <iyz>0</iyz>
+          <izz>4.242412526026635e-06</izz>
+        </inertia>
+      </inertial>
+      <!--
+      <collision name="prop_3_collision">
+        <pose>0 0 0 1.57 -0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.005</length>
+            <radius>0.0635</radius>
+          </cylinder>
+        </geometry>
+        <surface>
+          <contact>
+            <ode/>
+          </contact>
+          <friction>
+            <ode/>
+          </friction>
+        </surface>
+      </collision>
+-->
+      <visual name="prop_3_visual">
+        <pose>0 0 0 1.57080 -0 0</pose>
+        <geometry>
+          <mesh>
+            <scale>0.001 0.001 0.001</scale>
+            <uri>model://nf1/meshes/prop_gemfan_5152R_ccw.dae</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/Red</name>
+            <uri>__default__</uri>
+          </script>
+        </material>
+      </visual>
+      <gravity>1</gravity>
+      <velocity_decay/>
+      <self_collide>0</self_collide>
+    </link>
+    <joint name="prop_3_joint" type='revolute'>
+      <child>prop_3</child>
+
+      <parent>frame</parent>
+      <!--<parent>motor_3</parent>-->
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <lower>-1e+16</lower>
+          <upper>1e+16</upper>
+        </limit>
+        <dynamics>
+          <spring_reference>0</spring_reference>
+          <spring_stiffness>0</spring_stiffness>
+        </dynamics>
+        <use_parent_model_frame>1</use_parent_model_frame>
+      </axis>
+    </joint>
+    <plugin name="prop_3_motor_model" filename='libgazebo_motor_model.so'>
+      <robotNamespace></robotNamespace>
+      <jointName>prop_3_joint</jointName>
+      <linkName>prop_3</linkName>
+      <turningDirection>ccw</turningDirection>
+      <timeConstantUp>0.187</timeConstantUp>
+      <timeConstantDown>0.1</timeConstantDown>
+      <maxRotVelocity>2622</maxRotVelocity>
+      <motorConstant>9.375e-7</motorConstant>
+      <momentConstant>0.0086</momentConstant>
+      <motorNumber>2</motorNumber>
+      <rotorDragCoefficient>8e-5</rotorDragCoefficient>
+      <rollingMomentCoefficient>1e-06</rollingMomentCoefficient>
+      <rotorVelocitySlowdownSim>1</rotorVelocitySlowdownSim>
+      <rotorVelocityUnits>rpm</rotorVelocityUnits>
+      <escTransferFunction>
+          <term1Coefficient>-14229.32</term1Coefficient>
+          <term2Coefficient>39125.59</term2Coefficient>
+          <term3Coefficient>86.67</term3Coefficient>
+      </escTransferFunction>
+      <joint_control_pid>
+          <p>0.0001</p>
+          <i>0</i>
+          <d>0</d>
+          <iMin>0</iMin>
+          <iMax>0</iMax>
+          <cmdMin>-0.1</cmdMin>
+          <cmdMax>0.05</cmdMax>
+      </joint_control_pid>
+    </plugin>
+    
+    <link name="prop_4">
+    <pose>0.0805 0.07 0.058 0 -0 0</pose>
+      <inertial>
+        <pose>-0.000004 0.000009 0.002041</pose>
+        <mass>0.00511</mass>
+        <inertia>
+          <ixx>2.157959928944065e-06</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>2.1559551412902913e-06</iyy>
+          <iyz>0</iyz>
+          <izz>4.242412526026635e-06</izz>
+        </inertia>
+      </inertial>
+      <!--
+      <collision name="prop_4_collision">
+        <pose>0 0 0 1.57 -0 0</pose>
+        <geometry>
+          <cylinder>
+            <length>0.005</length>
+            <radius>0.0635</radius>
+          </cylinder>
+        </geometry>
+        <surface>
+          <contact>
+            <ode/>
+          </contact>
+          <friction>
+            <ode/>
+          </friction>
+        </surface>
+      </collision>
+-->
+      <visual name="prop_4_visual">
+        <pose>0 0 0 1.57080 -0 0</pose>
+        <geometry>
+          <mesh>
+            <scale>0.001 0.001 0.001</scale>
+            <uri>model://nf1/meshes/prop_gemfan_5152R_cw.dae</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/Red</name>
+            <uri>__default__</uri>
+          </script>
+        </material>
+      </visual>
+      <gravity>1</gravity>
+      <velocity_decay/>
+      <self_collide>0</self_collide>
+    </link>
+    <joint name="prop_4_joint" type='revolute'>
+      <child>prop_4</child>
+
+      <parent>frame</parent>
+      <!--<parent>motor_4</parent>-->
+      <axis>
+        <xyz>0 0 1</xyz>
+        <limit>
+          <lower>-1e+16</lower>
+          <upper>1e+16</upper>
+        </limit>
+        <dynamics>
+          <spring_reference>0</spring_reference>
+          <spring_stiffness>0</spring_stiffness>
+        </dynamics>
+        <use_parent_model_frame>1</use_parent_model_frame>
+      </axis>
+    </joint>
+    <plugin name="prop_4_motor_model" filename='libgazebo_motor_model.so'>
+      <robotNamespace></robotNamespace>
+      <jointName>prop_4_joint</jointName>
+      <linkName>prop_4</linkName>
+      <turningDirection>cw</turningDirection>
+      <timeConstantUp>0.187</timeConstantUp>
+      <timeConstantDown>0.1</timeConstantDown>
+      <maxRotVelocity>2622</maxRotVelocity>
+      <motorConstant>9.375e-7</motorConstant>
+      <momentConstant>0.0086</momentConstant>
+      <motorNumber>3</motorNumber>
+      <rotorDragCoefficient>8e-5</rotorDragCoefficient>
+      <rollingMomentCoefficient>1e-06</rollingMomentCoefficient>
+      <rotorVelocitySlowdownSim>1</rotorVelocitySlowdownSim>
+      <rotorVelocityUnits>rpm</rotorVelocityUnits>
+      <escTransferFunction>
+          <term1Coefficient>-14229.32</term1Coefficient>
+          <term2Coefficient>39125.59</term2Coefficient>
+          <term3Coefficient>86.67</term3Coefficient>
+      </escTransferFunction>
+      <joint_control_pid>
+          <p>0.0001</p>
+          <i>0</i>
+          <d>0</d>
+          <iMin>0</iMin>
+          <iMax>0</iMax>
+          <cmdMin>-0.05</cmdMin>
+          <cmdMax>0.1</cmdMax>
+      </joint_control_pid>
+    </plugin>
+    
+    <!--
+    <link name='camera'>
+      <pose>0 -0.0365 0.057 -0.61 -0 0</pose>
+      <inertial> 
+          <pose>0.085986 0.004925 0.009818</pose>
+          <mass>0.0089</mass>
+        <inertia>
+          <ixx>4.717113070259094e-07</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>3.2794071643187787e-07</iyy>
+          <iyz>0</iyz>
+          <izz>4.661185950654987e-07</izz>
+        </inertia>
+      </inertial>
+      <collision name='camera_collision'>
+        <pose>0 0 0.0095 0 -0 0</pose>
+        <geometry>
+            <box>                 
+                <size>0.019 0.024 0.019</size>
+            </box>
+        </geometry>
+        <surface>
+          <contact>
+            <ode/>
+          </contact>
+          <friction>
+            <ode/>
+          </friction>
+        </surface>
+      </collision>
+      <visual name='camera_visual'>
+        <pose>0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <scale>0.001 0.001 0.001</scale>
+            <uri>model://nf1/meshes/camera_runcam_micro_eagle.dae</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/White</name>
+            <uri>__default__</uri>
+          </script>
+        </material>
+      </visual>
+    </link>
+    <joint name="camera_joint" type="fixed">
+        <child>camera</child>
+        <parent>frame</parent>
+    </joint>
+    -->
+
+    <link name='fc_stack'>
+        <pose>0 0 0.042 0 -0 0</pose>
+      <inertial>
+          <pose>0.000000 0.000000 0.010500</pose>
+          <mass>0.0305</mass>
+        <inertia>
+          <ixx>4.414875e-06</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>4.414875e-06</iyy>
+          <iyz>0</iyz>
+          <izz>6.5879999999999994e-06</izz>
+        </inertia>
+      </inertial>
+      <!--
+      <collision name='fc_stack_collision'>
+        <pose>0 0 0.0095 0 -0 0</pose>
+        <geometry>
+            <box>                 
+                <size>0.019 0.024 0.019</size>
+            </box>
+        </geometry>
+        <surface>
+          <contact>
+            <ode/>
+          </contact>
+          <friction>
+            <ode/>
+          </friction>
+        </surface>
+      </collision>
+-->
+      <visual name='fc_stack_visual'>
+        <pose>0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <scale>0.001 0.001 0.001</scale>
+            <uri>model://nf1/meshes/fc_stack_simple.dae</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/Black</name>
+            <uri>__default__</uri>
+          </script>
+        </material>
+      </visual>
+      <gravity>1</gravity>
+      <velocity_decay/>
+      <self_collide>0</self_collide>
+    </link>
+    <joint name="fc_stack_joint" type="fixed">
+        <child>fc_stack</child>
+        <parent>frame</parent>
+    </joint>
+    <plugin name='gazebo_imu_plugin' filename='libgazebo_imu_plugin.so'>
+      <robotNamespace></robotNamespace>
+      <linkName>fc_stack</linkName>
+      <imuTopic>/imu</imuTopic>
+      <gyroscopeNoiseDensity>0.0003394</gyroscopeNoiseDensity>
+      <gyroscopeRandomWalk>3.8785e-05</gyroscopeRandomWalk>
+      <gyroscopeBiasCorrelationTime>1000.0</gyroscopeBiasCorrelationTime>
+      <gyroscopeTurnOnBiasSigma>0.0087</gyroscopeTurnOnBiasSigma>
+      <accelerometerNoiseDensity>0.004</accelerometerNoiseDensity>
+      <accelerometerRandomWalk>0.006</accelerometerRandomWalk>
+      <accelerometerBiasCorrelationTime>300.0</accelerometerBiasCorrelationTime>
+      <accelerometerTurnOnBiasSigma>0.196</accelerometerTurnOnBiasSigma>
+      <angularVelocityUnits>deg/s</angularVelocityUnits>
+    </plugin>
+    <static>0</static>
+  </model>
+</sdf>
