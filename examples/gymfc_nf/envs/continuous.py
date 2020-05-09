@@ -8,7 +8,7 @@ import time
 from neuroflight_trainer.gyms.rewards import RewardEnv
 
 class ContinuousEnv(RewardEnv): 
-    """An environment that continously generates setpoints for the agent to 
+    """An environment that continuously generates setpoints for the agent to 
     track until a max sim time is reached. 
 
     This is to simulate a more realistic environment in which the next 

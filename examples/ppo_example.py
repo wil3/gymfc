@@ -1,6 +1,14 @@
 """Train a neuro-flight controller attitude control using the PPO RL
-algorithm"""
-#from baselines.ppo1.run_flightcontrol import train
+algorithm.
+
+It is recommended before training for an extended period of time to set the ckpt_freq
+and timestep arguments to small numbers and test everything is functioning as
+expected. 
+
+The Tensorflow input tensor is named 'pi/ob:0', and the output tensor is named
+'pi/pol/final/BiasAdd:0'. This can be used to extract the subgraph and evaluate
+the graph in pb format.
+"""
 from gymfc_nf.envs import *
 import os.path
 import time

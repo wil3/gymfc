@@ -30,5 +30,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     env = Sim(args.aircraftconfig, args.gymfc_config, args.verbose)
-    env.render()
+    env.render().wait()
 

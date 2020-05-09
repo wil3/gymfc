@@ -84,8 +84,7 @@ class RampErrDeltaErrEnv(RampEnv):
         )
 
     def state(self):
-        """ Get the current state 
-        """
+        """Get the current state"""
         err_rad = np.array(list(map(math.radians, self.measured_error)))
         last_err_rad = np.array(list(map(math.radians, self.last_measured_error)))
 

@@ -6,9 +6,6 @@ from gym.utils import seeding
 from gymfc.envs.fc_env import FlightControlEnv
 import time
 
-"""
-Use a reference model 
-"""
 class ReferenceModel(FlightControlEnv, gym.Env):
     PWM_TOL = 1 #+- 1 microseconds
     GOAL_TARGET = 0
@@ -24,18 +21,16 @@ class ReferenceModel(FlightControlEnv, gym.Env):
                  action_bounds = [0, 1],
                  num_inputs = 6
                  ): 
-        """
-        Create a training environment in which the desired angular velocity is continuous.
+        """Create a training environment in which the agent learns to follow a
+        pre-calculated step response in the shape of a tanh function.  
 
-        After initializing this environment the agent should call seed() and then reset()
-        so the seed will be used for sampling the desired state
+        The use of a reference model has potential but this implementation
+        results in the agent just tracking a pre-calculated reference. It is
+        worth investigating using the damping ratio and frequency response as
+        reward terms to characterize the desired performance of the controller.
         """
 
         self.noise_sigma = 0
-        print ("AC Config=", aircraft_config)
-
-        #XXX This must be called here so the the variables get initialized
-        #self.seed()
 
         self.action_bounds = action_bounds
         self.np_random = None
@@ -77,7 +72,6 @@ class ReferenceModel(FlightControlEnv, gym.Env):
         super().__init__(aircraft_config=aircraft_config, verbose=False)
 
         self.action_space = spaces.Box(-np.ones(4), np.ones(4), dtype=np.float32)
-        #self.action_space = spaces.Box(np.array([self.action_bounds[0]]*4), np.array([self.action_bounds[1]]*4), dtype=np.float32)
         self.action = self.action_space.low 
 
         # TODO make this dynamic based on whats enabled
