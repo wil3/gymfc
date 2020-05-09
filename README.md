@@ -52,6 +52,7 @@ Please use the following BibTex entries to cite our work,
 * [Getting Started](https://github.com/wil3/gymfc#getting-started)
 * [User Modules](https://github.com/wil3/gymfc#available-user-provided-modules)
 * [Custom Modules](https://github.com/wil3/gymfc#custom-user-modules)
+* [Examples](https://github.com/wil3/gymfc#examples)
 * [Development Team](https://github.com/wil3/gymfc#)
 * [Contributions](https://github.com/wil3/gymfc#contributions)
 
@@ -73,7 +74,7 @@ Please use the following BibTex entries to cite our work,
 
 
 # News
-* May 2020 - NF1 model and reward function used in thesis published. 
+* May 2020 - [NF1](https://rotorbuilds.com/build/15163) quadcopter model and reward functions used in this thesis work is published in the `examples` directory.
 * August 2019 - GymFC synthesizes neuro-controller with [new level of
   performance](https://www.youtube.com/watch?v=MByCyEnsYP0).  
 * August 2019 - Thesis is defended, [Flight Controller Synthesis via Deep
