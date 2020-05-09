@@ -73,7 +73,11 @@ Please use the following BibTex entries to cite our work,
 
 
 # News
-
+* May 2020 - NF1 model and reward function used in thesis published. 
+* August 2019 - GymFC synthesizes neuro-controller with [new level of
+  performance](https://www.youtube.com/watch?v=MByCyEnsYP0).  
+* August 2019 - Thesis is defended, [Flight Controller Synthesis via Deep
+  Reinforcement Learning](http://wfk.io/docs/WilliamKochThesisFINAL.pdf). 
 * July 2019 - GymFC v0.2.0 is released. 
 * December 2018 - Our GymFC manuscript is accepted to the journal ACM Transactions on Cyber-Physical Systems.
 * November 2018 - Flight controller synthesized with GymFC achieves stable
@@ -166,10 +170,11 @@ know and we will add it below.
 
 ## Environments
 
-WIP
+* [gymfc_nf-step-v1](https://github.com/wil3/gymfc/tree/master/examples/gymfc_nf/envs)
 
 ## Digital Twins
 
+* [NF1](https://github.com/wil3/gymfc/tree/master/examples/gymfc_nf/twins/nf1)
 * [Solo](https://github.com/wil3/gymfc-digitaltwin-solo) Needs help!
 
 ## Motor models
@@ -242,6 +247,10 @@ minimum the aircraft must subscribe to motor commands and publish IMU messages
 
 *Message Type* EscSensor.proto
 
+# Examples
+
+The OpenAI environment and digital twin models used in Wil Koch's thesis can be found in the
+`examples/` directory. 
 
 # Development Team 
 GymFC was developed and currently maintained by [Wil Koch](https://wfk.io).
