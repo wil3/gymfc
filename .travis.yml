@@ -4,36 +4,10 @@ matrix:
   include:
   - name: "Bionic beaver"
     dist: bionic
+services:
+  - docker
 before-install:
-  - sudo apt-get update
-  # Install dart from source
-  - sudo apt-get install -y build-essential libqt5opengl5-dev
-  - sudo apt-get install -y libqt5opengl5-dev
-  - sudo apt-get install -y libeigen3-dev libassimp-dev libccd-dev libfcl-dev libboost-regex-dev libboost-system-dev
-  # Octomap is specified as an optional dependency but building is not linking without it, http://dartsim.github.io/install_dart_on_ubuntu.html
-  - sudo apt-get install -y liboctomap-dev
-  - git clone https://github.com/dartsim/dart.git /tmp/dart
-  - cd /tmp/dart && git checkout v6.7.0
-  - mkdir build && cd build
-  - cmake ..
-  - make -j4
-  - sudo make install 
-  # Install boost dependency
-  - sudo apt-get install -y libboost-all-dev
-  # Install Gazebo from source http://gazebosim.org/tutorials?tut=install_from_source&cat=install
-  - sudo sh -c 'echo "deb http://packages.osrfoundation.org/gazebo/ubuntu-stable `lsb_release -cs` main" > /etc/apt/sources.list.d/gazebo-stable.list'
-  - wget http://packages.osrfoundation.org/gazebo.key -O /tmp/gazebo.key 
-  - sudo apt-key add /tmp/gazebo.key 
-  - sudo apt-get update
-  - wget https://bitbucket.org/osrf/release-tools/raw/default/jenkins-scripts/lib/dependencies_archive.sh -O /tmp/dependencies.sh
-  - /bin/bash -c "GAZEBO_MAJOR_VERSION=10 ROS_DISTRO=dummy source /tmp/dependencies.sh && echo \${BASE_DEPENDENCIES} \${GAZEBO_BASE_DEPENDENCIES} \${DART_DEPENDENCIES} | tr -d '\\' | xargs sudo apt-get -y install"
-  - hg clone https://bitbucket.org/osrf/gazebo /tmp/gazebo
-  - cd /tmp/gazebo
-  - hg up gazebo10_10.1.0
-  - mkdir build && cd build
-  - cmake -DCMAKE_INSTALL_PREFIX=/home/$USER/local ../
-  - make -j4
-  - sudo make install
-
+  - docker pull wil3/gymfc:testing
 install:
-  - pip install .
+  - docker run -v $TRAVIS_BUILD_DIR:/tmp/gymfc "cd /tmp/gymfc && pip3 install ."
+
