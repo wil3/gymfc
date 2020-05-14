@@ -9,5 +9,5 @@ services:
 before-install:
   - docker pull wil3/gymfc:testing
 install:
-  - docker run -v $TRAVIS_BUILD_DIR:/tmp/gymfc "cd /tmp/gymfc && pip3 install ."
+  - docker run -v $TRAVIS_BUILD_DIR:/tmp/gymfc wil3/gymfc:testing "cd /tmp/gymfc && pip3 install ."
 
