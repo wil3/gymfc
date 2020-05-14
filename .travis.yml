@@ -1,0 +1,16 @@
+# This travis script builds and installs gymfc via pip in a docker container. 
+# We need the docker container because we want to use the same running environment 
+# for the build and this can take over an hour exceeding the travis build timeout. 
+sudo: required
+language: generic
+matrix:
+  include:
+  - name: "Bionic beaver"
+    dist: bionic
+services:
+  - docker
+before-install:
+  - docker pull wil3/gymfc:testing
+install:
+  - docker run -v $TRAVIS_BUILD_DIR:/tmp/gymfc wil3/gymfc:testing "cd /tmp/gymfc && pip3 install ."
+
