@@ -179,7 +179,7 @@ class FlightControlEnv(ABC):
 
         # Priotiry of load, constructor -> environment variable -> default 
         current_dir = os.path.dirname(__file__)
-        default_config_path = os.path.join(current_dir, "../../gymfc.ini")
+        default_config_path = os.path.join(current_dir, "../gymfc.ini")
         if config_filepath:
             if not os.path.isfile(config_filepath):
                 message = "Error, provided configuration file at constructor but not found {}, aborting.".format(config_filepath)
@@ -208,7 +208,7 @@ class FlightControlEnv(ABC):
         # Gazebo configuration
         self.setup_file = os.path.expandvars(default["SetupFile"])
         if not os.path.isfile(self.setup_file):
-                message = "Could not find Gazebo setup.sh file at '{}'. Typo?".format(self.setup_file)
+                message = "Could not find Gazebo setup.sh file at '{}'. Confirm SetupFile in gymfc/gymfc.ini is pointing to the correct location.".format(self.setup_file)
                 raise ConfigLoadException(message)
         self.world = default["World"]
         self.host = default["Hostname"]

@@ -297,4 +297,10 @@ GymFC was developed and currently maintained by [Wil Koch](https://wfk.io).
 # Contributions
 Please see [CONTRIBUTING.md](https://github.com/wil3/gymfc/blob/master/CONTRIBUTING.md) before opening an issue or pull request. 
 
+If you see the following error message this is because you have not built the
+motor model plugins.
+```
+[Err] [Plugin.hh:187] Failed to load plugin libgazebo_motor_model.so: libgazebo_motor_model.so: cannot open shared object file: No such file or directory
+```
+
 
