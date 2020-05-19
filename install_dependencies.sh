@@ -1,6 +1,18 @@
+#!/bin/bash
 # Install the dependencies for GymFC on Ubuntu 18.04. 
 # Requires sudo
+# This will install Gazebo to GAZEBO_INSTALL_PATH, which by default is /home/$USER/local as recommended by Gazebo. This allows on to easily switch between the debian and source installs by updating the paths written to your bashrc.
 
+GAZEBO_MAJOR_VERSION=10 
+GAZEBO_VERSION=gazebo10_10.1.0
+# Running sudo on this script will give $USER as root so get the currently logged in user instead
+USERNAME=$(logname)
+GAZEBO_INSTALL_PATH=/home/$USERNAME/local
+DART_VERSION=v6.7.0
+ROS_DISTRO=dummy
+# Compiling Gazebo can be very memory intensive, this variable sets how many jobs are run in parallel. 
+# If you set this too high make will crash with out of memory errors.
+MAKE_JOBS=${MAKE_JOBS:=1}
 
 # Install Dart dependencies
 apt-get update && apt-get -y install \
@@ -20,19 +32,17 @@ apt-get update && apt-get -y install \
     liboctomap-dev
 
 # Build Dart
-DART_VERSION=v6.7.0
 git clone "https://github.com/dartsim/dart.git" /tmp/dart \
     && cd /tmp/dart && git checkout $DART_VERSION \
     && mkdir build && cd build \
     && cmake .. \
-    && make -j4 \
-    && make install \
-    && rm -rf /tmp/dart
+    && make -j$MAKE_JOBS \
+    && make install 
 
 # Install Gazebo from source following the instructions from here: http://gazebosim.org/tutorials?tut=install_from_source&cat=install
 
 # Prepare Gazebo
-apt-get remove '.*gazebo.*' '.*sdformat.*' '.*ignition-math.*' '.*ignition-msgs.*' '.*ignition-transport.*'
+apt-get -y remove '.*gazebo.*' '.*sdformat.*' '.*ignition-math.*' '.*ignition-msgs.*' '.*ignition-transport.*'
 
 apt-get update && apt-get -y install \
     lsb-release \
@@ -46,26 +56,23 @@ sh -c 'echo "deb http://packages.osrfoundation.org/gazebo/ubuntu-stable `lsb_rel
 
 # Install Gazebo dependencies
 wget https://raw.githubusercontent.com/ignition-tooling/release-tools/master/jenkins-scripts/lib/dependencies_archive.sh -O /tmp/dependencies.sh
-GAZEBO_MAJOR_VERSION=10 
-ROS_DISTRO=dummy 
-source /tmp/dependencies.sh && echo ${BASE_DEPENDENCIES} ${GAZEBO_BASE_DEPENDENCIES} ${DART_DEPENDENCIES} | tr -d '\\' | xargs apt-get -y install
+. /tmp/dependencies.sh && echo ${BASE_DEPENDENCIES} ${GAZEBO_BASE_DEPENDENCIES} ${DART_DEPENDENCIES} | tr -d '\\' | xargs apt-get -y install
 
 
 # Build Gazebo
-GAZEBO_VERSION=gazebo10_10.1.0
 hg clone https://bitbucket.org/osrf/gazebo /tmp/gazebo \
     && cd /tmp/gazebo \
     && hg up $GAZEBO_VERSION \
     && mkdir build && cd build  \
-    && cmake ../ \
-    && make -j4 \
-    && make install \
-    && rm -rf /tmp/gazebo
+    && cmake -DCMAKE_INSTALL_PREFIX=$GAZEBO_INSTALL_PATH ../ \
+    && make -j$MAKE_JOBS \
+    && make install 
 
-# Change default location of gazebo install.
-# Currently not used as it is most benificial so you can run multiple gazebo versions.
-# However to run gymfc the gymfc.ini must point to the correct setup.sh file.
-# cmake -DCMAKE_INSTALL_PREFIX=/home/$USER/local ../ \
+# Now update paths to Gazebo can be found
+echo "export LD_LIBRARY_PATH=$GAZEBO_INSTALL_PATH/lib:$LD_LIBRARY_PATH" >> ~/.bashrc
+echo "export PATH=$GAZEBO_INSTALL_PATH/bin:$PATH" >> ~/.bashrc
+echo "export PKG_CONFIG_PATH=$GAZEBO_INSTALL_PATH/lib/pkgconfig:$PKG_CONFIG_PATH" >> ~/.bashrc
+. ~/.bashrc
 
 # Install GymFC dependencies 
 apt-get update && apt-get install -y \
