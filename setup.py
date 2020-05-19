@@ -40,6 +40,7 @@ setup(name='gymfc',
       license='MIT',
       packages=find_packages(),
       package_data={'gymfc': [
+          'gymfc.ini',
           'envs/assets/gazebo/models/attitude_control_training_rig/*.config',
           'envs/assets/gazebo/models/attitude_control_training_rig/*.sdf',
           'envs/assets/gazebo/worlds/*.world',
