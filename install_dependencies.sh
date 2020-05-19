@@ -10,9 +10,10 @@ USERNAME=$(logname)
 GAZEBO_INSTALL_PATH=/home/$USERNAME/local
 DART_VERSION=v6.7.0
 ROS_DISTRO=dummy
-# Compiling Gazebo can be very memory intensive, this variable sets how many jobs are run in parallel. 
-# If you set this too high make will crash with out of memory errors.
-MAKE_JOBS=${MAKE_JOBS:=1}
+# Compiling Gazebo can be very memory intensive, this variable passes additional flags to make for dart and gazebo. 
+# By default this sets the number of parallel jobs to 1. If you set this too high make will crash with out of memory errors. 
+# If you have sufficient memory, increase this value for a faster install.
+MAKE_FLAGS=${MAKE_FLAGS:=-j1}
 
 # Install Dart dependencies
 apt-get update && apt-get -y install \
@@ -36,7 +37,7 @@ git clone "https://github.com/dartsim/dart.git" /tmp/dart \
     && cd /tmp/dart && git checkout $DART_VERSION \
     && mkdir build && cd build \
     && cmake .. \
-    && make -j$MAKE_JOBS \
+    && make -j$MAKE_FLAGS \
     && make install 
 
 # Install Gazebo from source following the instructions from here: http://gazebosim.org/tutorials?tut=install_from_source&cat=install
@@ -65,7 +66,7 @@ hg clone https://bitbucket.org/osrf/gazebo /tmp/gazebo \
     && hg up $GAZEBO_VERSION \
     && mkdir build && cd build  \
     && cmake -DCMAKE_INSTALL_PREFIX=$GAZEBO_INSTALL_PATH ../ \
-    && make -j$MAKE_JOBS \
+    && make -j$MAKE_FLAGS \
     && make install 
 
 # Now update paths to Gazebo can be found
