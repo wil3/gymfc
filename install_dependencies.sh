@@ -37,7 +37,7 @@ git clone "https://github.com/dartsim/dart.git" /tmp/dart \
     && cd /tmp/dart && git checkout $DART_VERSION \
     && mkdir build && cd build \
     && cmake .. \
-    && make -j$MAKE_FLAGS \
+    && make $MAKE_FLAGS \
     && make install 
 
 # Install Gazebo from source following the instructions from here: http://gazebosim.org/tutorials?tut=install_from_source&cat=install
@@ -66,7 +66,7 @@ hg clone https://bitbucket.org/osrf/gazebo /tmp/gazebo \
     && hg up $GAZEBO_VERSION \
     && mkdir build && cd build  \
     && cmake -DCMAKE_INSTALL_PREFIX=$GAZEBO_INSTALL_PATH ../ \
-    && make -j$MAKE_FLAGS \
+    && make $MAKE_FLAGS \
     && make install 
 
 # Now update paths to Gazebo can be found
