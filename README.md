@@ -139,9 +139,10 @@ python3 tests/test_start_sim.py --verbose examples/gymfc_nf/twins/nf1/model.sdf
 If everything is OK you should see the NF1 quadcopter model in Gazebo.
 
 You will see the following error message because you have not built the
-motor model plugins yet.
+motor and IMU plugins yet.
 ```
 [Err] [Plugin.hh:187] Failed to load plugin libgazebo_motor_model.so: libgazebo_motor_model.so: cannot open shared object file: No such file or directory
+[Err] [Plugin.hh:187] Failed to load plugin libgazebo_imu_plugin.so: libgazebo_imu_plugin.so: cannot open shared object file: No such file or directory
 ```
 Also the following error message is normal,
 ``` 
