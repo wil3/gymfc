@@ -474,6 +474,12 @@ class FlightControlEnv(ABC):
         container_env["GAZEBO_RESOURCE_PATH"] += os.pathsep + world_path
         container_env["GAZEBO_PLUGIN_PATH"] += (os.pathsep + plugin_path + os.pathsep +
 aircraft_plugin_dir)
+        # When installing via pip the FlightControllerPlugin plugin is unable 
+        # to find the custom control and sensor messages unless the path is 
+        # included in this variable. It may be due how the library files move 
+        # after they are built. This behavior is not observed when installing 
+        # with pip in edit/develop mode.
+        container_env["LD_LIBRARY_PATH"] += os.pathsep + plugin_path
 
 
         print ("Gazebo Model Path =", container_env["GAZEBO_MODEL_PATH"])
