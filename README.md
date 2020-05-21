@@ -38,12 +38,6 @@ Please use the following BibTex entries to cite our work,
 
 ![Architecture](https://github.com/wil3/gymfc/blob/master/images/gymfc2-arch.png)
 
-> :warning: **Warning:** Documentation is lagging behind in regards to the new
-> framework and installation instructions. Migration to GymFC2 is going to take
-> some effort however it provides a sustainable framework moving forward.
-> Documentation and additional examples will be added with time. Best bet at
-> the moment is to read through the code, python side is in good shape, c++
-> needs love.  
 
 ## Table of contents
 
@@ -90,28 +84,47 @@ Please use the following BibTex entries to cite our work,
 
 # Installation 
 
-Note, Ubuntu 16.04 LTS and 18.04 LTS are the only OS currently supported. Please submit a PR for the
-README.md if you are
-able to get it working on another platform. To ensure accurate and stable
-simulations it is recommended to use DART with Gazebo. This requires Gazebo to
-be installed from source. For more information please see this
-[video](https://www.youtube.com/watch?v=d3NyFU0bVT0).  We have found these
-versions to work well together,
-1. Compile and install DART v6.7 from source
-   [here](https://github.com/dartsim/dart/tree/v6.7.0).
-1. Compile and install [Gazebo 10](http://gazebosim.org/tutorials?tut=install_from_source&cat=install). 
-2. (Optional) It is suggested to set up a [virtual environment](https://docs.python.org/3/library/venv.html). From the project root,
-   `python3 -m venv env`. This will create an environment named `env` which
-will be ignored by git. To enable the virtual environment, `source
-env/bin/activate` and to deactivate, `deactivate`.  
-2. From root directory of this project, `pip3 install .` If you plan to work with the GymFC source code you will want to install it in
-development mode, `pip3 install -e .` You will also
-need to build the plugin manually by running the script
-`gymfc/envs/assets/gazebo/plugins/build_plugin.sh`.
-3. Confirm `SetupFile` in `gymfc.ini` is pointing to the correct location.
+## Quick start
+To install GymFC and its dependencies on Ubuntu 18.04 execute,
+```
+sudo MAKE_FLAGS=-j4 ./install_dependencies.sh
+pip3 install .
+```
 
-## Installation using Docker
-This repository includes an experimental docker build that demos the usage of GymFC. 
+## Dependencies
+GymFC runs on Ubuntu 18.04 and uses  [Gazebo v10.1.0](http://gazebosim.org/tutorials?tut=install_from_source&cat=install) with [Dart v6.7.0](https://github.com/dartsim/dart/tree/v6.7.0) for the backend simulator. To use Dart with Gazebo, they must be installed from source. For why Gazebo must be used with Dart see this [video](https://www.youtube.com/watch?v=d3NyFU0bVT0). The easiest way to install the dependencies is with the provided `install_dependencies.sh` script. By default it will run `make` with a single job. You can override the `make` flags with the `MAKE_FLAGS` environment variable. Building Gazebo from source is very resource intensive. If you have sufficient memory increase the number of jobs to run in parallel. For example to run four jobs in parallel execute, 
+```
+sudo MAKE_FLAGS=-j4 ./install_dependencies.sh
+```
+Note, this script may take more than an hour to execute. If your build fails
+check `dmesg` but the most common reason will be out-of-memory failures. 
+
+## GymFC
+
+Once the dependencies have been installed execute, 
+```
+pip3 install .
+```
+This will install the Python dependencies and also build the Gazebo plugins and
+messages. 
+
+## Developing with GymFC
+If you plan to modify the GymFC code you will need to install in
+edit/development mode. 
+```
+pip3 install -e .
+```
+You will also have to manually install the Gazebo plugins by executing,
+```
+gymfc/envs/assets/gazebo/plugins/build_plugin.sh
+```
+If you deviate from this installation instructions (e.g., installing Gazebo in
+a different location other than specific in `install_dependencies.sh`), you
+may need to change the location of the Gazeob `setup.sh` defined by the
+variable SetupFile in `gymfc/gymfc.ini`.
+
+## Install by Docker
+This repository includes an experimental docker build in `docker/demo` that demos the usage of GymFC. 
 It has been tested on MacOS 10.14.3 and Ubuntu 18.04, however the Gazebo client
 has not been verified to work for Ubuntu. This docker image can help ensure you
 are running a supported environment for GymFC.
@@ -125,7 +138,7 @@ For Ubuntu, install [Docker for Ubuntu](https://docs.docker.com/engine/install/u
 Build the docker image
 
 ```bash
-docker build  -f Dockerfile-demo . -t gymfc:demo
+docker build  . -t gymfc:demo
 ```
 This will take a while as it compiles mesa drivers, gazebo and dart. It is recommended to give Docker a large part of the host's resources.
 All incoming connections will forward to xquartz:
@@ -302,5 +315,6 @@ motor model plugins.
 ```
 [Err] [Plugin.hh:187] Failed to load plugin libgazebo_motor_model.so: libgazebo_motor_model.so: cannot open shared object file: No such file or directory
 ```
-
-
+``` 
+[Err] [DARTJoint.cc:195] DARTJoint: SetAnchor is not implemented
+```
