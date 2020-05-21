@@ -100,8 +100,12 @@ Note, this script may take more than an hour to execute. If your build fails
 check `dmesg` but the most common reason will be out-of-memory failures. 
 
 ## GymFC
+(Optional) It is suggested to set up a [virtual environment](https://docs.python.org/3/library/venv.html) to install GymFC into. From the project root run,
+   `python3 -m venv env`. This will create an environment named `env` which
+will be ignored by git. To enable the virtual environment, `source
+env/bin/activate` and to deactivate, `deactivate`.  
 
-Once the dependencies have been installed execute, 
+Install GymFC,
 ```
 pip3 install .
 ```
@@ -120,8 +124,31 @@ gymfc/envs/assets/gazebo/plugins/build_plugin.sh
 ```
 If you deviate from this installation instructions (e.g., installing Gazebo in
 a different location other than specific in `install_dependencies.sh`), you
-may need to change the location of the Gazeob `setup.sh` defined by the
+may need to change the location of the Gazebo `setup.sh` defined by the
 variable SetupFile in `gymfc/gymfc.ini`.
+
+## Verifying install
+
+GymFC requires an aircraft model (digital twin) to run. The NF1 racing
+quadcopter model is available in `examples/gymfc_nf/twins/nf1` if you need a
+model for testing. To test everything is installed correctly run,
+
+```
+python3 tests/test_start_sim.py --verbose examples/gymfc_nf/twins/nf1/model.sdf
+```
+If everything is OK you should see the NF1 quadcopter model in Gazebo.
+
+You will see the following error message because you have not built the
+motor model plugins yet.
+```
+[Err] [Plugin.hh:187] Failed to load plugin libgazebo_motor_model.so: libgazebo_motor_model.so: cannot open shared object file: No such file or directory
+```
+Also the following error message is normal,
+``` 
+[Err] [DARTJoint.cc:195] DARTJoint: SetAnchor is not implemented
+```
+
+To use the NF1 model for further testing read examples/README.md. 
 
 ## Install by Docker
 This repository includes an experimental docker build in `docker/demo` that demos the usage of GymFC. 
@@ -156,7 +183,7 @@ gymfc:demo \
 ```
 
 Replace _<hostip>_ by the external ip of your system to allow gymfc to connect to your XQuartz server and _<path-to-gymfc-digitaltwin-solo>_ to where you cloned the Solo repo.
-Take special note that the test_step_sim.py parameters are using the containers
+Take special note that the `test_step_sim.py` parameters are using the containers
 path, not the host's path.
 
 
@@ -310,11 +337,3 @@ GymFC was developed and currently maintained by [Wil Koch](https://wfk.io).
 # Contributions
 Please see [CONTRIBUTING.md](https://github.com/wil3/gymfc/blob/master/CONTRIBUTING.md) before opening an issue or pull request. 
 
-If you see the following error message this is because you have not built the
-motor model plugins.
-```
-[Err] [Plugin.hh:187] Failed to load plugin libgazebo_motor_model.so: libgazebo_motor_model.so: cannot open shared object file: No such file or directory
-```
-``` 
-[Err] [DARTJoint.cc:195] DARTJoint: SetAnchor is not implemented
-```
