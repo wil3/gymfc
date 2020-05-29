@@ -23,6 +23,7 @@ pip3 install .
 ```
 3. Build the motor models. 
 ```
+pip3 install .
 mkdir gymfc_nf/twins/nf1/plugins
 cd gymfc_nf/twins/nf1/plugins
 git clone https://github.com/wil3/gymfc-aircraft-plugins.git

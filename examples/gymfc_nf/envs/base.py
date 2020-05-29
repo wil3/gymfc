@@ -43,7 +43,7 @@ class BaseEnv(FlightControlEnv, gym.Env):
         # IMU noise is aircraft specific and thus can not be included as
         # initial values for the registered environment. After the environment
         # has been created the user can update this function.
-        self.sample_noise = None 
+        self.sample_noise = lambda _: 0
 
     def set_aircraft_model(self, model):
         """Set the aircraft's model.sdf
