@@ -1,19 +1,20 @@
 #!/bin/bash
 # Install the dependencies for GymFC on Ubuntu 18.04. 
 # Requires sudo
-# This will install Gazebo to GAZEBO_INSTALL_PATH, which by default is /home/$USER/local as recommended by Gazebo. This allows on to easily switch between the debian and source installs by updating the paths written to your bashrc.
 
 GAZEBO_MAJOR_VERSION=10 
 GAZEBO_VERSION=gazebo10_10.1.0
 # Running sudo on this script will give $USER as root so get the currently logged in user instead
 USERNAME=$(logname)
-GAZEBO_INSTALL_PATH=/home/$USERNAME/local
 DART_VERSION=v6.7.0
 ROS_DISTRO=dummy
 # Compiling Gazebo can be very memory intensive, this variable passes additional flags to make for dart and gazebo. 
 # By default this sets the number of parallel jobs to 1. If you set this too high make will crash with out of memory errors. 
 # If you have sufficient memory, increase this value for a faster install.
 MAKE_FLAGS=${MAKE_FLAGS:=-j1}
+
+# Remove any other installations of Dart installed through debian packages
+apt-get remove -y libdart*
 
 # Install Dart dependencies
 apt-get update && apt-get -y install \
@@ -65,15 +66,13 @@ hg clone https://bitbucket.org/osrf/gazebo /tmp/gazebo \
     && cd /tmp/gazebo \
     && hg up $GAZEBO_VERSION \
     && mkdir build && cd build  \
-    && cmake -DCMAKE_INSTALL_PREFIX=$GAZEBO_INSTALL_PATH ../ \
+    && cmake ../ \
     && make $MAKE_FLAGS \
     && make install 
 
-# Now update paths to Gazebo can be found
-echo "export LD_LIBRARY_PATH=$GAZEBO_INSTALL_PATH/lib:$LD_LIBRARY_PATH" >> ~/.bashrc
-echo "export PATH=$GAZEBO_INSTALL_PATH/bin:$PATH" >> ~/.bashrc
-echo "export PKG_CONFIG_PATH=$GAZEBO_INSTALL_PATH/lib/pkgconfig:$PKG_CONFIG_PATH" >> ~/.bashrc
-. ~/.bashrc
+# /usr/local/lib is not on the load path by defalut so add it
+echo '/usr/local/lib' | sudo tee /etc/ld.so.conf.d/gazebo.conf
+sudo ldconfig
 
 # Install GymFC dependencies 
 apt-get update && apt-get install -y \
