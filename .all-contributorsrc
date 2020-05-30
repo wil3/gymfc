@@ -27,6 +27,15 @@
         "example",
         "infra"
       ]
+    },
+    {
+      "login": "sidmysore",
+      "name": "Sid Mysore",
+      "avatar_url": "https://avatars2.githubusercontent.com/u/12174271?v=4",
+      "profile": "https://github.com/sidmysore",
+      "contributions": [
+        "bug"
+      ]
     }
   ],
   "contributorsPerLine": 7,
