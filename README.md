@@ -1,5 +1,6 @@
 ![GymFC](https://github.com/wil3/gymfc/blob/master/images/gymfc-logo.png)
 [![Build Status](https://travis-ci.com/wil3/gymfc.svg?branch=master)](https://travis-ci.com/wil3/gymfc)
+[![All-Contributors](https://img.shields.io/badge/dynamic/json?color=orange&label=All%20Contributors&query=%24.contributors.length&url=https%3A%2F%2Fraw.githubusercontent.com%2Fwil3%2Fgymfc%2Fmaster%2F.all-contributorsrc)
 
 GymFC is flight control tuning framework with a focus in attitude control. 
 GymFC was first introduced in the [manuscript](http://wfk.io/docs/gymfc.pdf) "Reinforcement learning for UAV attitude control" in which a simulator was used to
