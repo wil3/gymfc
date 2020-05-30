@@ -1,7 +1,5 @@
 ![GymFC](https://github.com/wil3/gymfc/blob/master/images/gymfc-logo.png)
-<!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 [![All Contributors](https://img.shields.io/badge/all_contributors-1-orange.svg?style=flat-square)](#contributors-)
-<!-- ALL-CONTRIBUTORS-BADGE:END -->
 [![Build Status](https://travis-ci.com/wil3/gymfc.svg?branch=master)](https://travis-ci.com/wil3/gymfc)
 
 GymFC is flight control tuning framework with a focus in attitude control. 
@@ -296,12 +294,7 @@ The OpenAI environment and digital twin models used in Wil Koch's thesis can be 
 # Creator
 [Wil Koch](https://wfk.io)
 
-# Contributors
-Want to become a contributor?! Visit [CONTRIBUTING.md](https://github.com/wil3/gymfc/blob/master/CONTRIBUTING.md) for more information to get started. 
-
-
-
-## Contributors ✨
+# Contributors ✨
 
 Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
 
@@ -318,4 +311,4 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
 <!-- prettier-ignore-end -->
 <!-- ALL-CONTRIBUTORS-LIST:END -->
 
-This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification. Contributions of any kind welcome!
+Want to become a contributor?! Visit [CONTRIBUTING.md](https://github.com/wil3/gymfc/blob/master/CONTRIBUTING.md) for more information to get started. 
