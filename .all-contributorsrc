@@ -45,6 +45,15 @@
       "contributions": [
         "bug"
       ]
+    },
+    {
+      "login": "xabierolaz",
+      "name": "xabierolaz",
+      "avatar_url": "https://avatars0.githubusercontent.com/u/31626226?v=4",
+      "profile": "https://github.com/xabierolaz",
+      "contributions": [
+        "test"
+      ]
     }
   ],
   "contributorsPerLine": 7,
