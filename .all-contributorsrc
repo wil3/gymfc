@@ -1,0 +1,27 @@
+{
+  "files": [
+    "README.md"
+  ],
+  "imageSize": 100,
+  "commit": false,
+  "contributors": [
+    {
+      "login": "wil3",
+      "name": "Wil Koch",
+      "avatar_url": "https://avatars3.githubusercontent.com/u/4587660?v=4",
+      "profile": "https://wfk.io",
+      "contributions": [
+        "code",
+        "doc",
+        "example",
+        "infra"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7,
+  "projectName": "gymfc",
+  "projectOwner": "wil3",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "skipCi": true
+}
