@@ -331,10 +331,26 @@ minimum the aircraft must subscribe to motor commands and publish IMU messages
 The OpenAI environment and digital twin models used in Wil Koch's thesis can be found in the
 `examples/` directory. 
 
-# Development Team 
-GymFC was developed and currently maintained by [Wil Koch](https://wfk.io).
+# Creator
+[Wil Koch](https://wfk.io)
 
+# Contributors ✨
 
-# Contributions
-Please see [CONTRIBUTING.md](https://github.com/wil3/gymfc/blob/master/CONTRIBUTING.md) before opening an issue or pull request. 
+Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
 
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+<table>
+  <tr>
+    <td align="center"><a href="https://wfk.io"><img src="https://avatars3.githubusercontent.com/u/4587660?v=4" width="100px;" alt=""/><br /><sub><b>Wil Koch</b></sub></a><br /><a href="https://github.com/wil3/gymfc/commits?author=wil3" title="Code">💻</a> <a href="https://github.com/wil3/gymfc/commits?author=wil3" title="Documentation">📖</a> <a href="#example-wil3" title="Examples">💡</a> <a href="#infra-wil3" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td>
+    <td align="center"><a href="https://github.com/MichaelManz"><img src="https://avatars0.githubusercontent.com/u/1280036?v=4" width="100px;" alt=""/><br /><sub><b>Michael Friedrich</b></sub></a><br /><a href="https://github.com/wil3/gymfc/commits?author=MichaelManz" title="Code">💻</a> <a href="#example-MichaelManz" title="Examples">💡</a> <a href="#infra-MichaelManz" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td>
+    <td align="center"><a href="https://github.com/sidmysore"><img src="https://avatars2.githubusercontent.com/u/12174271?v=4" width="100px;" alt=""/><br /><sub><b>Sid Mysore</b></sub></a><br /><a href="https://github.com/wil3/gymfc/issues?q=author%3Asidmysore" title="Bug reports">🐛</a></td>
+  </tr>
+</table>
+
+<!-- markdownlint-enable -->
+<!-- prettier-ignore-end -->
+<!-- ALL-CONTRIBUTORS-LIST:END -->
+
+Want to become a contributor?! Visit [CONTRIBUTING.md](https://github.com/wil3/gymfc/blob/master/CONTRIBUTING.md) for more information to get started. 

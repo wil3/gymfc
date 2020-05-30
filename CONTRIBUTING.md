@@ -10,9 +10,8 @@ Please follow these steps when reporting a bug.
 
 1) Search through the issues to ensure your bug has not already been submitted. 
 2) Open a new issue and describe at lengths how the bug can be reproduced.
-3) Provide details of your running environment, the commands you have executed
-and the full output. If necessary, provide any material or scripts needed to
-reproduce the bug. 
+3) Include the full verbose output in markdown
+code block, not as an image. Images can't be searched.
 
 ## Code Contributions
 Please follow these steps in order to have your contribution considered by
@@ -38,9 +37,14 @@ issue the PR closes, for example `Closes: #45`. When the PR is merged, this keyw
 Please provide testing results that will affect your code changes. A number of
 testing scripts already exist in /test that may help. 
 
-## User Module Development
+## R&D
 
-TODO 
+We are always in need of better models and reward functions.  
+
+## Documentation and Examples
+
+It can be intimidating getting into this research, it is very
+multi-disciplinary. Good documentation allows for more people to get involved.  
 
 ## Style Guides 
 
@@ -60,3 +64,5 @@ The Python guide can be found
 To stay consistent with Gazebo, the Gazebo C++ plugins follow the Gazebo style guide found
 [here](http://gazebosim.org/tutorials?tut=contrib_code&cat=development).
 
+## Add your self as a contributor
+GymFC uses the [all-contributors bot](https://allcontributors.org/docs/en/bot/overview) to maintain a list of all contributors. When you open a PR be sure to add your self as a contributor using the bot usage [here](https://allcontributors.org/docs/en/bot/usage). 
