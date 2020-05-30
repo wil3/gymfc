@@ -291,7 +291,7 @@ The OpenAI environment and digital twin models used in Wil Koch's thesis can be 
 `examples/` directory. 
 
 # Creator
-[Wil Koch](https://wfk.io).
+[Wil Koch](https://wfk.io)
 
 # Contributors
 Want to become a contributor?! Visit [CONTRIBUTING.md](https://github.com/wil3/gymfc/blob/master/CONTRIBUTING.md) for more information to get started. 
