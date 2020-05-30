@@ -290,11 +290,10 @@ minimum the aircraft must subscribe to motor commands and publish IMU messages
 The OpenAI environment and digital twin models used in Wil Koch's thesis can be found in the
 `examples/` directory. 
 
-# Development Team 
-GymFC was developed and currently maintained by [Wil Koch](https://wfk.io).
+# Creator
+[Wil Koch](https://wfk.io).
 
-
-# Contributions
-Please see [CONTRIBUTING.md](https://github.com/wil3/gymfc/blob/master/CONTRIBUTING.md) before opening an issue or pull request. 
+# Contributors
+Want to become a contributor?! Visit [CONTRIBUTING.md](https://github.com/wil3/gymfc/blob/master/CONTRIBUTING.md) for more information to get started. 
 
 
