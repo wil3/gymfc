@@ -36,6 +36,35 @@
       "contributions": [
         "bug"
       ]
+    },
+    {
+      "login": "SwapnilPande",
+      "name": "Swapnil Pande",
+      "avatar_url": "https://avatars3.githubusercontent.com/u/9200948?v=4",
+      "profile": "https://github.com/SwapnilPande",
+      "contributions": [
+        "bug",
+        "ideas",
+        "test"
+      ]
+    },
+    {
+      "login": "xabierolaz",
+      "name": "xabierolaz",
+      "avatar_url": "https://avatars0.githubusercontent.com/u/31626226?v=4",
+      "profile": "https://github.com/xabierolaz",
+      "contributions": [
+        "test"
+      ]
+    },
+    {
+      "login": "varunag18",
+      "name": "varunag18",
+      "avatar_url": "https://avatars0.githubusercontent.com/u/1232584?v=4",
+      "profile": "https://github.com/varunag18",
+      "contributions": [
+        "test"
+      ]
     }
   ],
   "contributorsPerLine": 7,
