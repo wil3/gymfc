@@ -72,7 +72,7 @@ hg clone https://bitbucket.org/osrf/gazebo /tmp/gazebo \
 
 # /usr/local/lib is not on the load path by defalut so add it
 echo '/usr/local/lib' | sudo tee /etc/ld.so.conf.d/gazebo.conf
-sudo ldconfig
+ldconfig
 
 # Install GymFC dependencies 
 apt-get update && apt-get install -y \
