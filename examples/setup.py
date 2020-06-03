@@ -5,6 +5,6 @@ setup(name='gymfc_nf',
       author='William Koch',
       author_email='wfkoch [at] gmail [dot] com',
       license='MIT',
-#      packages=find_packages(),
-      install_requires=['gymfc', 'gym', 'numpy'],
+      packages=find_packages(),
+      install_requires=['matplotlib', 'gym', 'numpy'],
 )

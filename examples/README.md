@@ -21,6 +21,17 @@ save Tensorflow checkpoints. In the same virtual environment you use for GymFC, 
 ```
 pip3 install .
 ```
+3. Build the motor models. 
+```
+pip3 install .
+mkdir gymfc_nf/twins/nf1/plugins
+cd gymfc_nf/twins/nf1/plugins
+git clone https://github.com/wil3/gymfc-aircraft-plugins.git
+mkdir build
+cd build
+cmake ../gymfc-aircraft-plugins
+make
+```
 
 
 # Aircraft model / digital twin

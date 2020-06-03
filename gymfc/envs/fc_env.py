@@ -179,7 +179,7 @@ class FlightControlEnv(ABC):
 
         # Priotiry of load, constructor -> environment variable -> default 
         current_dir = os.path.dirname(__file__)
-        default_config_path = os.path.join(current_dir, "../../gymfc.ini")
+        default_config_path = os.path.join(current_dir, "../gymfc.ini")
         if config_filepath:
             if not os.path.isfile(config_filepath):
                 message = "Error, provided configuration file at constructor but not found {}, aborting.".format(config_filepath)
@@ -208,7 +208,7 @@ class FlightControlEnv(ABC):
         # Gazebo configuration
         self.setup_file = os.path.expandvars(default["SetupFile"])
         if not os.path.isfile(self.setup_file):
-                message = "Could not find Gazebo setup.sh file at '{}'. Typo?".format(self.setup_file)
+                message = "Could not find Gazebo setup.sh file at '{}'. Confirm SetupFile in gymfc/gymfc.ini is pointing to the correct location.".format(self.setup_file)
                 raise ConfigLoadException(message)
         self.world = default["World"]
         self.host = default["Hostname"]
@@ -474,6 +474,12 @@ class FlightControlEnv(ABC):
         container_env["GAZEBO_RESOURCE_PATH"] += os.pathsep + world_path
         container_env["GAZEBO_PLUGIN_PATH"] += (os.pathsep + plugin_path + os.pathsep +
 aircraft_plugin_dir)
+        # When installing via pip the FlightControllerPlugin plugin is unable 
+        # to find the custom control and sensor messages unless the path is 
+        # included in this variable. It may be due how the library files move 
+        # after they are built. This behavior is not observed when installing 
+        # with pip in edit/develop mode.
+        container_env["LD_LIBRARY_PATH"] += os.pathsep + plugin_path
 
 
         print ("Gazebo Model Path =", container_env["GAZEBO_MODEL_PATH"])
