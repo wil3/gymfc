@@ -72,6 +72,7 @@ class RewardEnv(BaseEnv):
             # penalty if the agent does nothing, i.e., refusing to 'play'
             self.doing_nothing_penalty(),
         ]
+        self.ind_rewards = rewards
 
         return np.sum(rewards)
 

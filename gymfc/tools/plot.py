@@ -30,7 +30,7 @@ def plot_rates(ax, t, pqr_desired, pqr_actual):
         ax[i].set_ylabel(axis_label[i] + unit_rotation)
 
 
-def plot_motor_rpms(ax, t, rpms):
+def plot_motor_rpms(ax, t, rpms, alpha=1.0):
     """ Plot the motor rpms values
 
     Args:
@@ -40,42 +40,26 @@ def plot_motor_rpms(ax, t, rpms):
         rpms: 2D Numpy array where the length is equal to len(t) and the width
         corresponds to the number of actuators. 
     """
-    motorcolor = [['b','r','#ff8000','#00ff00'], ['m']*4]
     ax.set_ylabel("RPM")
 
-    for i in range(len(rpms)):
-        alpha = 1
-        if len(self.alphas) > 0:
-            alpha = self.alphas[i]
-        m0 = rpms[i][:,0]
-        m1 = rpms[i][:,1]
-        m2 = rpms[i][:,2]
-        m3 = rpms[i][:,3]
-         
-        ax.plot(t, m0, label="{} M1".format(self.labels[i]), linestyle=':', color=colors[i], alpha=alpha)#, color=motorcolor[i][0])
-        ax.plot(t, m1, label="{} M2".format(self.labels[i]), linestyle="-", color=colors[i], alpha=alpha)#, color=motorcolor[i][1],)
-        ax.plot(t, m2, label="{} M3".format(self.labels[i]), linestyle="-.", color=colors[i], alpha=alpha)#, color=motorcolor[i][2],)
-        ax.plot(t, m3, label="{} M4".format(self.labels[i]), linestyle='--', color=colors[i], alpha=alpha)#color=motorcolor[i][3],
-        ax.legend( loc='upper right', ncol=4)
+    lines = ["-", "-.", ":", "--"]
+    for i in range(4):
+        ax.plot(t, rpms[:,i], label="M{}".format(i+1), linestyle=lines[i], 
+                alpha=alpha)
+
+    ax.legend(loc='upper right', ncol=4)
+    ax.grid(True)
 
 
-def plot_u(ax):
+def plot_u(ax, t, u, alpha=1.0):
     """ Plot motor control signals """
-    ax.set_ylabel("Motor Control Signal (\%)")
+    ax.set_ylabel("u (\%)")
+    lines = ["-", "-.", ":", "--"]
+    for i in range(4):
+        ax.plot(t, u[:,i], label="M{}".format(i+1), linestyle=lines[i], 
+                alpha=alpha)
 
+    ax.legend(loc='upper right', ncol=4)
+    ax.grid(True)
 
-    for i in range(len(motors)):
-        alpha = 1
-        if len(self.alphas) > 0:
-            alpha = self.alphas[i]
-        m0 = motors[i][:,0]/1000.0
-        m1 = motors[i][:,1]/1000.0
-        m2 = motors[i][:,2]/1000.0
-        m3 = motors[i][:,3]/1000.0
-         
-        ax.plot(t, m0, label="{} M1".format(self.labels[i]), linestyle=':', color=colors[i], alpha=alpha)#, color=motorcolor[i][0])
-        ax.plot(t, m1, label="{} M2".format(self.labels[i]), linestyle="-", color=colors[i], alpha=alpha)#, color=motorcolor[i][1],)
-        ax.plot(t, m2, label="{} M3".format(self.labels[i]), linestyle="-.", color=colors[i], alpha=alpha)#, color=motorcolor[i][2],)
-        ax.plot(t, m3, label="{} M4".format(self.labels[i]), linestyle='--', color=colors[i], alpha=alpha)#color=motorcolor[i][3],
-        ax.legend( loc='upper right', ncol=4)
 

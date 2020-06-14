@@ -45,6 +45,10 @@ class BaseEnv(FlightControlEnv, gym.Env):
         # has been created the user can update this function.
         self.sample_noise = lambda _: 0
 
+        # A callback made at the end of each step. It takes a single
+        # parameter containing the class reference
+        self.step_callback = None
+
     def set_aircraft_model(self, model):
         """Set the aircraft's model.sdf
         
@@ -68,13 +72,6 @@ class BaseEnv(FlightControlEnv, gym.Env):
                 indexed by the acutuator index defined in the models SDF.
         """
         self.action = action.copy()
-
-        # XXX seed must be called to initialize the RNG which means
-        # this can't be set in the constructor
-        # Set it here if the user didn't call reset first.
-        if not self.np_random:
-            seed = int(time.time()* 1e6) 
-            self.seed(seed)
 
         # Translate the agents output to the aircraft control signals. In this
         # case our control signal is represented as a percentage. This 
@@ -102,6 +99,9 @@ class BaseEnv(FlightControlEnv, gym.Env):
 
         self.last_measured_error = self.measured_error.copy() 
         self.last_y = self.y.copy()
+        self.step_counter += 1
+        if self.step_callback:
+            self.step_callback(self, state, reward, done)
         return state, reward, done, {}
 
     def action_to_control_signal(self, action, action_low, action_high, 
@@ -136,6 +136,10 @@ class BaseEnv(FlightControlEnv, gym.Env):
         self.true_error = np.zeros(3)
         self.imu_angular_velocity_rpy = np.zeros(3)
         #self.imu_orientation_quat = np.array([0, 0, 0, 1])
+
+        # Keep track of the number of steps so we can determine how many steps
+        # occur in an episode.
+        self.step_counter = 0
 
     def reset(self):
         self._init()
