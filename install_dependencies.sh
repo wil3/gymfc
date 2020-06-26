@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 # Install the dependencies for GymFC on Ubuntu 18.04. 
 # Requires sudo
 
@@ -34,7 +35,7 @@ apt-get update && apt-get -y install \
     liboctomap-dev
 
 # Build Dart
-git clone "https://github.com/dartsim/dart.git" /tmp/dart \
+git clone https://github.com/dartsim/dart.git /tmp/dart \
     && cd /tmp/dart && git checkout $DART_VERSION \
     && mkdir build && cd build \
     && cmake .. \
@@ -58,13 +59,14 @@ sh -c 'echo "deb http://packages.osrfoundation.org/gazebo/ubuntu-stable `lsb_rel
 
 # Install Gazebo dependencies
 wget https://raw.githubusercontent.com/ignition-tooling/release-tools/master/jenkins-scripts/lib/dependencies_archive.sh -O /tmp/dependencies.sh
-. /tmp/dependencies.sh && echo ${BASE_DEPENDENCIES} ${GAZEBO_BASE_DEPENDENCIES} ${DART_DEPENDENCIES} | tr -d '\\' | xargs apt-get -y install
+. /tmp/dependencies.sh
+echo ${BASE_DEPENDENCIES} ${GAZEBO_BASE_DEPENDENCIES} ${DART_DEPENDENCIES} | tr -d '\\' | xargs apt-get -y install
 
 
 # Build Gazebo
-hg clone https://bitbucket.org/osrf/gazebo /tmp/gazebo \
+git clone https://github.com/osrf/gazebo.git /tmp/gazebo \
     && cd /tmp/gazebo \
-    && hg up $GAZEBO_VERSION \
+    && git checkout $GAZEBO_VERSION \
     && mkdir build && cd build  \
     && cmake ../ \
     && make $MAKE_FLAGS \
