@@ -46,6 +46,7 @@ Please use the following BibTex entries to cite our work,
 * [News](https://github.com/wil3/gymfc#news)
 * [Installation](https://github.com/wil3/gymfc#installation)
 * [Getting Started](https://github.com/wil3/gymfc#getting-started)
+* [Tutorials](https://github.com/wil3/gymfc#tutorials)
 * [User Modules](https://github.com/wil3/gymfc#available-user-provided-modules)
 * [Custom Modules](https://github.com/wil3/gymfc#custom-user-modules)
 * [Examples](https://github.com/wil3/gymfc#examples)
@@ -230,7 +231,11 @@ NOTE! If you are using external plugins create soft links
 to each .so file in the build directory.
 
 
+# Tutorials
 
+* [Installation](https://www.youtube.com/watch?v=r6Q0Q7z2K9c)
+
+More coming soon!
 
 
 # Available User Provided Modules
