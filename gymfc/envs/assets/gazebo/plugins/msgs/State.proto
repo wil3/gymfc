@@ -24,8 +24,8 @@ message State
   optional float  vbat_voltage = 11;
   optional float  vbat_current = 12;
 
-  // Sensor. Measures will be in meters as in Gazebo, with two decimals indicating decimeters and centimeters. e.g. 4.85 m (4 meters and 85 centimeters)
-  repeated float  sensor = 13 [packed=true];
+  // Distance. Units will be in meters as in Gazebo, with two decimals indicating decimeters and centimeters. e.g. 4.85 m (4 meters and 85 centimeters)
+  repeated float  distance = 13 [packed=true];
 
 
 
