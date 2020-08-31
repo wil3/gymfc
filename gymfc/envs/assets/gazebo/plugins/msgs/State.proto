@@ -24,7 +24,7 @@ message State
   optional float  vbat_voltage = 11;
   optional float  vbat_current = 12;
 
-  // Distance. Units will be in meters as in Gazebo, with two decimals indicating decimeters and centimeters. e.g. 4.85 m (4 meters and 85 centimeters)
+  // Single distance value in meters from sensor to ground
   repeated float  distance = 13 [packed=true];
 
 
