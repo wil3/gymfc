@@ -25,7 +25,7 @@ message State
   optional float  vbat_current = 12;
 
   // Single distance value in meters from sensor to ground
-  repeated float  distance = 13 [packed=true];
+  float  distance = 13 [packed=true];
 
 
 
