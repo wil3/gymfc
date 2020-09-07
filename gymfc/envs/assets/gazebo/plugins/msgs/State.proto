@@ -24,8 +24,10 @@ message State
   optional float  vbat_voltage = 11;
   optional float  vbat_current = 12;
 
-  // Single distance value in meters from sensor to ground
-  float  distance = 13 [packed=true];
+  // Distance. Values in meters from the sensor
+  // First index represents vertical distance downwards to the ground(additional will represent different directions)
+
+  repeated float  distance = 13 [packed=true];
 
 
 
