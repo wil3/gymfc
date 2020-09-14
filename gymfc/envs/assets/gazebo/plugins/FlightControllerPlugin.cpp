@@ -62,6 +62,10 @@ typedef SSIZE_T ssize_t;
 #include "EscSensor.pb.h"
 #include "Imu.pb.h"
 
+#include "DistanceSensor.pb.h" distance_sensor
+
+
+
 #include "State.pb.h"
 #include "Action.pb.h"
 
@@ -186,6 +190,10 @@ void FlightControllerPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf
           this->escSub.push_back(this->nodeHandle->Subscribe<sensor_msgs::msgs::EscSensor>(this->escSubTopic + "/" + std::to_string(i) , &FlightControllerPlugin::EscSensorCallback, this));
         }
         break;
+      case DISTANCE:  //distance sensor 
+      //Each direction will have a different index, only one for now
+        this->distanceSub = this->nodeHandle->Subscribe<sensor_msgs::msgs::DistanceSensor>(this->distanceSubTopic, &FlightControllerPlugin::ImuCallback, this);
+        break;
     }
   }
   this->InitState();
@@ -275,6 +283,13 @@ void FlightControllerPlugin::InitState()
     this->state.add_esc_force(0);
   }
 
+  // DISTANCE sensor
+  for (unsigned int i = 0; i < 4; i++)
+  {
+    // TODO 
+    this->state.add_distance(-1);
+  }
+
 }
 
 void FlightControllerPlugin::EscSensorCallback(EscSensorPtr &_escSensor)
@@ -289,6 +304,18 @@ void FlightControllerPlugin::EscSensorCallback(EscSensorPtr &_escSensor)
   this->state.set_esc_voltage(id, _escSensor->voltage());
   this->state.set_esc_force(id, _escSensor->force());
   this->state.set_esc_torque(id, _escSensor->torque());
+  this->sensorCallbackCount++;
+  this->callbackCondition.notify_all();
+
+}
+void FlightControllerPlugin::DistanceSensorCallback(DistanceSensorPtr &_distanceSensor)
+{
+  uint32_t id = _distanceSensor->id();  
+  boost::mutex::scoped_lock lock(g_CallbackMutex);
+
+  //gzdbg << "\nReceived DISTANCE " << id << " meters=" <<  _distanceSensor->distance_meters() << std::endl;
+  this->state.set_distance(id, _distanceSensor->distance_meters());
+  
   this->sensorCallbackCount++;
   this->callbackCondition.notify_all();
 

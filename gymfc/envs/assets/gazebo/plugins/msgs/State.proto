@@ -24,15 +24,20 @@ message State
   optional float  vbat_voltage = 11;
   optional float  vbat_current = 12;
 
+  // Distance Sensor
+  repeated float  distance_sensor = 13 [packed=true];
+
+
+
   // Placeholder for additional codes
   enum StatusCode {
     OK = 0;
     ERROR = 1;
   }
 
-  required StatusCode status_code = 13; 
+  required StatusCode status_code = 14; 
 
   // Force applied to the ball joint
-  repeated float force = 14 [packed=true];
+  repeated float force = 15 [packed=true];
 
 }
