@@ -12,3 +12,4 @@ CMakeCache.txt
 gymfc.json
 .idea
 env/
+gymfc/envs/assets/gazebo/plugins/.DS_Store

@@ -457,6 +457,10 @@ void FlightControllerPlugin::ParseDigitalTwinSDF()
     {
       this->supportedSensors.push_back(ESC);
     }
+    else if (boost::iequals(type, "distance"))
+    {
+      this->supportedSensors.push_back(DISTANCE);
+    }
     else if (boost::iequals(type, "battery"))
     {
       this->supportedSensors.push_back(BATTERY);
@@ -696,6 +700,9 @@ void FlightControllerPlugin::CalculateCallbackCount()
         break;
       case ESC:
         this->numSensorCallbacks += this->numActuators;
+        break;
+      case DISTANCE:
+        this->numSensorCallbacks += 1;
         break;
     }
   }
