@@ -24,7 +24,7 @@ message State
   optional float  vbat_voltage = 11;
   optional float  vbat_current = 12;
 
-  // Distance Sensor
+  // Distance Sensor. Units in meters. Different indices may indicate different directions
   repeated float  distance_sensor = 13 [packed=true];
 
 
