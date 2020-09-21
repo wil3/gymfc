@@ -62,7 +62,7 @@ typedef SSIZE_T ssize_t;
 #include "EscSensor.pb.h"
 #include "Imu.pb.h"
 
-#include "DistanceSensor.pb.h" distance_sensor
+#include "DistanceSensor.pb.h" //distance_sensor
 
 
 
@@ -812,6 +812,4 @@ void FlightControllerPlugin::SendState() const
            buf.size(), 0,
 		   (struct sockaddr *)&this->remaddr, this->remaddrlen); 
 }
-
-
 
