@@ -3,5 +3,5 @@ package sensor_msgs.msgs;
 
 message DistanceSensor
 {
-  required float    distance  = 0;
+  required float    distance  = 13;
 }
