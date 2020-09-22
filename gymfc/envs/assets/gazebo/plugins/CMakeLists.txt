@@ -51,6 +51,7 @@ set(sensor_msgs
   msgs/EscSensor.proto
   msgs/State.proto
   msgs/Action.proto
+  msgs/DistanceSensor.proto
   ${PROTOBUF_IMPORT_DIRS}/vector3d.proto
   ${PROTOBUF_IMPORT_DIRS}/quaternion.proto
   )
