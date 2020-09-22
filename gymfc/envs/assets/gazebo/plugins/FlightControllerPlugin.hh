@@ -33,6 +33,7 @@
 #include "Imu.pb.h"
 #include "State.pb.h"
 #include "Action.pb.h"
+#include "DistanceSensor.pb.h"
 
 #define ENV_SITL_PORT "GYMFC_SITL_PORT"
 #define ENV_DIGITAL_TWIN_SDF "GYMFC_DIGITAL_TWIN_SDF"
@@ -60,7 +61,8 @@ namespace gazebo
   enum Sensors {
     IMU,
     ESC,
-    BATTERY
+    BATTERY,
+    DISTANCE
   };
 
 class FlightControllerPlugin : public WorldPlugin
