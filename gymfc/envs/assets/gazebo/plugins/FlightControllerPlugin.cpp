@@ -192,7 +192,7 @@ void FlightControllerPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf
         break;
       case DISTANCE:  //distance sensor 
       //Each direction will have a different index, only one for now
-        this->distanceSub = this->nodeHandle->Subscribe<sensor_msgs::msgs::DistanceSensor>(this->distanceSubTopic, &FlightControllerPlugin::ImuCallback, this);
+        this->distanceSub = this->nodeHandle->Subscribe<sensor_msgs::msgs::DistanceSensor>(this->distanceSubTopic, &FlightControllerPlugin::DistanceSensorCallback, this);
         break;
     }
   }
