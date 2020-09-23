@@ -174,6 +174,7 @@ class FlightControllerPlugin : public WorldPlugin
   private: std::string cmdPubTopic;
   private: std::string imuSubTopic;
   private: std::string escSubTopic;
+  private: std::string distanceSubTopic;
   private: transport::NodePtr nodeHandle;
   // Now define the communication channels with the digital twin
   // The architecure treats this world plugin as the flight controller
