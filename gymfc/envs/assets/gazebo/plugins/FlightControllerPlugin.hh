@@ -118,6 +118,9 @@ class FlightControllerPlugin : public WorldPlugin
 
   /// \brief Callback from the digital twin to recieve IMU values
   private: void ImuCallback(ImuPtr &_imu);
+  
+   /// \brief Callback from the digital twin to recieve Distance Sensor values
+  private: void DistanceSensorCallback(DistanceSensorPtr &_distanceSensor);
 
   private: void CalculateCallbackCount();
   private: void ResetCallbackCount();
