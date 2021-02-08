@@ -1,0 +1,9 @@
+syntax = "proto2";
+package sensor_msgs.msgs;
+
+message Distance
+{
+   required float ground_distance   = 1;
+   
+}
+

@@ -62,6 +62,7 @@ typedef SSIZE_T ssize_t;
 #include "EscSensor.pb.h"
 #include "Imu.pb.h"
 
+#include "Distance.pb.h"
 #include "State.pb.h"
 #include "Action.pb.h"
 
@@ -176,6 +177,9 @@ void FlightControllerPlugin::Load(physics::WorldPtr _world, sdf::ElementPtr _sdf
       case IMU:
         this->imuSub = this->nodeHandle->Subscribe<sensor_msgs::msgs::Imu>(this->imuSubTopic, &FlightControllerPlugin::ImuCallback, this);
         break;
+      case DISTANCE:
+        this->distanceSub = this->nodeHandle->Subscribe<sensor_msgs::msgs::Distance>(this->distanceSubTopic, &FlightControllerPlugin::DistanceCallback, this);
+        break;
       case ESC:
         //Each defined motor will have a unique index, since they are indpendent they must come in 
         //as separate messages
@@ -275,6 +279,13 @@ void FlightControllerPlugin::InitState()
     this->state.add_esc_force(0);
   }
 
+  // DISTANCE SENSOR 
+    for (unsigned int i = 0; i < 1; i++)
+  {
+	  this->state.add_distance_ground_distance(0);
+  }
+
+
 }
 
 void FlightControllerPlugin::EscSensorCallback(EscSensorPtr &_escSensor)
@@ -311,6 +322,17 @@ void FlightControllerPlugin::ImuCallback(ImuPtr &_imu)
   this->state.set_imu_linear_acceleration_xyz(1, _imu->linear_acceleration().y());
   this->state.set_imu_linear_acceleration_xyz(2, _imu->linear_acceleration().z());
 
+  this->sensorCallbackCount++;
+  this->callbackCondition.notify_all();
+
+}
+void FlightControllerPlugin::DistanceCallback(DistancePtr &_distance)
+{
+  //gzdbg << "Received IMU" << std::endl;
+  boost::mutex::scoped_lock lock(g_CallbackMutex);
+
+  this->state.set_distance_ground_distance(0, _distance->ground_distance());
+  
   this->sensorCallbackCount++;
   this->callbackCondition.notify_all();
 
@@ -429,6 +451,10 @@ void FlightControllerPlugin::ParseDigitalTwinSDF()
     else if (boost::iequals(type, "esc"))
     {
       this->supportedSensors.push_back(ESC);
+    }
+    else if (boost::iequals(type, "imu"))
+    {
+      this->supportedSensors.push_back(DISTANCE);
     }
     else if (boost::iequals(type, "battery"))
     {
@@ -665,6 +691,9 @@ void FlightControllerPlugin::CalculateCallbackCount()
     switch(sensor){
       case BATTERY:
       case IMU:
+        this->numSensorCallbacks += 1;
+        break;
+      case DISTANCE:
         this->numSensorCallbacks += 1;
         break;
       case ESC:

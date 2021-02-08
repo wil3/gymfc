@@ -33,6 +33,7 @@
 #include "Imu.pb.h"
 #include "State.pb.h"
 #include "Action.pb.h"
+#include "Distance.pb.h" 
 
 #define ENV_SITL_PORT "GYMFC_SITL_PORT"
 #define ENV_DIGITAL_TWIN_SDF "GYMFC_DIGITAL_TWIN_SDF"
@@ -44,6 +45,7 @@ namespace gazebo
   static const std::string kDefaultCmdPubTopic = "/aircraft/command/motor";
   static const std::string kDefaultImuSubTopic = "/aircraft/sensor/imu";
   static const std::string kDefaultEscSubTopic = "/aircraft/sensor/esc";
+  static const std::string kDefaultDistanceSubTopic = "/aircraft/sensor/distance"; 
  // TODO Change link name to CoM
   const std::string DIGITAL_TWIN_ATTACH_LINK = "base_link";
   const std::string kTrainingRigModelName = "attitude_control_training_rig";
@@ -52,6 +54,7 @@ namespace gazebo
 
   typedef const boost::shared_ptr<const sensor_msgs::msgs::Imu> ImuPtr;
   typedef const boost::shared_ptr<const sensor_msgs::msgs::EscSensor> EscSensorPtr;
+  typedef const boost::shared_ptr<const sensor_msgs::msgs::Distance> DistancePtr;
 
   /// \brief List of all supported sensors. The client must
   // tell us which ones it will use. The client must be aware of the 
@@ -60,7 +63,8 @@ namespace gazebo
   enum Sensors {
     IMU,
     ESC,
-    BATTERY
+    BATTERY,
+    DISTANCE
   };
 
 class FlightControllerPlugin : public WorldPlugin
@@ -116,6 +120,7 @@ class FlightControllerPlugin : public WorldPlugin
 
   /// \brief Callback from the digital twin to recieve IMU values
   private: void ImuCallback(ImuPtr &_imu);
+  private: void DistanceCallback(DistancePtr &_distance);
 
   private: void CalculateCallbackCount();
   private: void ResetCallbackCount();
@@ -171,6 +176,7 @@ class FlightControllerPlugin : public WorldPlugin
 
   private: std::string cmdPubTopic;
   private: std::string imuSubTopic;
+  private: std::string distanceSubTopic;
   private: std::string escSubTopic;
   private: transport::NodePtr nodeHandle;
   // Now define the communication channels with the digital twin
@@ -181,8 +187,11 @@ class FlightControllerPlugin : public WorldPlugin
 
    // Subscribe to all possible sensors
   private: transport::SubscriberPtr imuSub;
+  private: transport::SubscriberPtr distanceSub;
   private: std::vector<transport::SubscriberPtr> escSub;
   private: cmd_msgs::msgs::MotorCommand cmdMsg;
+
+  //DISTANCE SENSOR "distanceSub" IS MISSING HERE 
 
   /// \brief Current callback count incremented as sensors are pbulished
   private: int sensorCallbackCount;

@@ -128,7 +128,7 @@ class FlightControlEnv(ABC):
     with a 1 second timeout. """
     MAX_CONNECT_TRIES = 60
 
-    VALID_SENSORS = ["esc", "imu", "battery"]
+    VALID_SENSORS = ["esc", "imu", "battery", "distance"]
 
     def __init__(self, aircraft_config, config_filepath=None, loop=None, verbose=False):
         """ Initialize the simulator
@@ -292,7 +292,11 @@ class FlightControlEnv(ABC):
         # try again or for some reason something goes wrong in the simualator and 
         # the packet wasnt processsed correctly. 
         for i in range(self.MAX_CONNECT_TRIES):
+            #print("before timeout")
             self.state_message, e = await self.ac_protocol.write(ac, world_control=world_control)
+            #print(ac)
+            #print(state_message,"state_message")
+            #print(e,"e")
             if self.state_message:
                 break
             if i == self.MAX_CONNECT_TRIES -1:
@@ -406,6 +410,9 @@ class FlightControlEnv(ABC):
             },
             "position": {
                 "enable_gps": "gps"
+            },
+            "distance": {
+                "enable_ground_distance": "distance_ground_distance"
             }
         }
         sensors = plugin_el.find("sensors")

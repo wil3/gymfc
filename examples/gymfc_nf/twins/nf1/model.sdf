@@ -21,6 +21,11 @@
                 <enable_temperature>false</enable_temperature>
                 <enable_current>false</enable_current>
           </sensor>
+          <sensor type="distance">
+                <enable_ground_distance>true</enable_ground_distance>
+                
+          </sensor>
+          
 		  <!--
           <sensor type="battery">
               <enable_voltage>true</enable_voltage>
@@ -861,6 +866,68 @@
       <accelerometerBiasCorrelationTime>300.0</accelerometerBiasCorrelationTime>
       <accelerometerTurnOnBiasSigma>0.196</accelerometerTurnOnBiasSigma>
       <angularVelocityUnits>deg/s</angularVelocityUnits>
+    </plugin>
+
+    <link name='fc_stack_1'>
+        <pose>0 0 0.045 0 -0 0</pose>
+      <inertial>
+          <pose>0.000000 0.000000 0.010500</pose>
+          <mass>0.0305</mass>
+        <inertia>
+          <ixx>4.414875e-06</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>4.414875e-06</iyy>
+          <iyz>0</iyz>
+          <izz>6.5879999999999994e-06</izz>
+        </inertia>
+      </inertial>
+      <!--
+      <collision name='fc_stack_collision'>
+        <pose>0 0 0.0095 0 -0 0</pose>
+        <geometry>
+            <box>                 
+                <size>0.019 0.024 0.019</size>
+            </box>
+        </geometry>
+        <surface>
+          <contact>
+            <ode/>
+          </contact>
+          <friction>
+            <ode/>
+          </friction>
+        </surface>
+      </collision>
+-->
+      <visual name='fc_stack_1_visual'>
+        <pose>0 0 0 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <scale>0.001 0.001 0.001</scale>
+            <uri>model://nf1/meshes/fc_stack_simple.dae</uri>
+          </mesh>
+        </geometry>
+        <material>
+          <script>
+            <name>Gazebo/Black</name>
+            <uri>__default__</uri>
+          </script>
+        </material>
+      </visual>
+      <gravity>1</gravity>
+      <velocity_decay/>
+      <self_collide>0</self_collide>
+    </link>
+    <joint name="fc_stack_1_joint" type="fixed">
+        <child>fc_stack_1</child>
+        <parent>frame</parent>
+    </joint>
+    <plugin name='gazebo_distance_plugin' filename='libgazebo_distance_plugin.so'>
+      <robotNamespace></robotNamespace>
+      <linkName>fc_stack_1</linkName>
+      <distanceTopic>/Distance</distanceTopic>
+      <MaxRange>20</MaxRange>
     </plugin>
     <static>0</static>
   </model>
