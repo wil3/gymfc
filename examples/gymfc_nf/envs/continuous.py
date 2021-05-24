@@ -5,7 +5,8 @@ from gym import spaces
 from gym.utils import seeding
 from gymfc.envs.fc_env import FlightControlEnv
 import time
-from neuroflight_trainer.gyms.rewards import RewardEnv
+from .rewards import RewardEnv
+
 
 class ContinuousEnv(RewardEnv): 
     """An environment that continuously generates setpoints for the agent to 
@@ -19,12 +20,13 @@ class ContinuousEnv(RewardEnv):
     def __init__(self,  max_rate = 800, pulse_width = 2, max_sim_time = 60,
                  aircraft_config=None, action_bounds = [-1, 1], state_fn = None,
                  version = 0): 
-        super().__init__(
-            aircraft_config = aircraft_config,
-            action_bounds = action_bounds,
-            max_sim_time = max_sim_time,
-             state_fn = state_fn,
-            version = version)
+        # super().__init__(
+        #     aircraft_config = aircraft_config,
+        #     action_bounds = action_bounds,
+        #     max_sim_time = max_sim_time,
+        #      state_fn = state_fn,
+        #     version = version)
+        super().__init__(max_sim_time=max_sim_time, state_fn=state_fn)
         self.max_rate = max_rate
         self.pulse_width = pulse_width
         self.first_step = True
@@ -38,7 +40,7 @@ class ContinuousEnv(RewardEnv):
         self.angular_rate_sp = np.zeros(3)
 
 
-    def setpoint_generator(self):
+    def update_setpoint(self):
         if self.sim_time > self.next_pulse_time:
             self.command_start_time = self.sim_time
 
