@@ -5,7 +5,7 @@ from gym import spaces
 from gym.utils import seeding
 from gymfc.envs.fc_env import FlightControlEnv
 import time
-from neuroflight_trainer.gyms.rewards import RewardEnv
+from .rewards import RewardEnv
 
 class ContinuousEnv(RewardEnv): 
     """An environment that continuously generates setpoints for the agent to 
